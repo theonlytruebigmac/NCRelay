@@ -1,0 +1,37 @@
+
+import { Cog, LayoutDashboard, Rss, Waypoints, History } from 'lucide-react';
+
+export type NavItem = {
+  title: string;
+  href: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  disabled?: boolean;
+  external?: boolean;
+};
+
+export const siteConfig = {
+  name: "RelayZen",
+  description: "Securely relay notifications to your favorite platforms.",
+  mainNav: [
+    {
+      title: "Dashboard",
+      href: "/dashboard",
+      icon: LayoutDashboard,
+    },
+    {
+      title: "Integrations",
+      href: "/dashboard/integrations",
+      icon: Rss,
+    },
+    {
+      title: "API Endpoints",
+      href: "/dashboard/settings/api", 
+      icon: Waypoints, 
+    },
+    {
+      title: "Logs",
+      href: "/dashboard/logs",
+      icon: History,
+    }
+  ] satisfies NavItem[],
+};
