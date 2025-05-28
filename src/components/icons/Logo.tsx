@@ -5,9 +5,9 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 200 50"
-      width="100"
-      height="25"
-      aria-label="RelayZen Logo"
+      width="200"
+      height="50"
+      aria-label="NCRelay Logo"
       {...props}
     >
       <text
@@ -16,9 +16,9 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
         fontFamily="var(--font-geist-sans), Arial, sans-serif"
         fontSize="30"
         fontWeight="bold"
-        fill="hsl(var(--primary))"
+        fill="currentColor"
       >
-        RelayZen
+        NCRelay
       </text>
     </svg>
   );

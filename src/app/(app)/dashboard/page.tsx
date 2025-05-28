@@ -27,7 +27,12 @@ export default function DashboardPage() {
       } catch (error) {
         console.error("Failed to load dashboard stats:", error);
         // Set to 0 or handle error appropriately
-        setStats({ activeIntegrationsCount: 0, relayedNotificationsCount: 0 });
+        setStats({ 
+          activeIntegrationsCount: 0, 
+          relayedNotificationsCount: 0,
+          apiEndpointsCount: 0,
+          apiEndpointsRequestsCount: 0
+        });
       } finally {
         setIsLoadingStats(false);
       }
@@ -91,12 +96,22 @@ export default function DashboardPage() {
             <CardTitle className="text-sm font-medium">
               API Endpoints
             </CardTitle>
-            <Settings className="h-5 w-5 text-muted-foreground" />
+            <Settings className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Define custom API endpoints for receiving data.
+            {isLoadingStats || !stats ? (
+              <Skeleton className="h-8 w-1/4 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold">{stats.apiEndpointsCount}</div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Custom endpoints configured
             </p>
+            {!isLoadingStats && stats && stats.apiEndpointsRequestsCount > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.apiEndpointsRequestsCount} requests processed via endpoints
+              </p>
+            )}
             <Button asChild variant="secondary" size="sm" className="mt-4">
               <Link href="/dashboard/settings/api">Configure Endpoints</Link>
             </Button>
@@ -114,9 +129,9 @@ export default function DashboardPage() {
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>1. Go to <Link href="/dashboard/integrations" className="text-primary hover:underline">Integrations</Link> to add or edit messaging platforms.</p>
           <p>2. Go to <Link href="/dashboard/settings/api" className="text-primary hover:underline">API Endpoints</Link> to create custom API paths and link them to your integrations.</p>
-          <p>3. Use your configured custom API endpoint URL to send XML data to RelayZen.</p>
+          <p>3. Use your configured custom API endpoint URL to send XML data to NCRelay.</p>
           <p>4. Check the <Link href="/dashboard/logs" className="text-primary hover:underline">Logs</Link> page to see processed requests.</p>
-          <p>5. RelayZen will process and relay your notifications to the linked platforms!</p>
+          <p>5. NCRelay will process and relay your notifications to the linked platforms!</p>
         </CardContent>
       </Card>
     </PageShell>

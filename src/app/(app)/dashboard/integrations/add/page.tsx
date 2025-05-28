@@ -84,7 +84,7 @@ export default function AddIntegrationPage() {
       {/* Pass the form instance to IntegrationForm */}
       <IntegrationForm
         formInstance={form} // Pass the form instance
-        onSubmit={form.handleSubmit(handleSubmit)} // Use form.handleSubmit
+        onSubmit={handleSubmit} // Pass raw handler
         isSubmitting={isSubmitting}
         submitButtonText="Create Integration"
       />

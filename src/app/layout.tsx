@@ -9,7 +9,7 @@ const geistSans = GeistSans;
 const geistMono = GeistMono;
 
 export const metadata: Metadata = {
-  title: 'RelayZen',
+  title: 'NCRelay',
   description: 'Securely relay notifications to your favorite platforms.',
 };
 

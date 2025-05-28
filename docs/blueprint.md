@@ -1,4 +1,4 @@
-# **App Name**: RelayZen
+# **App Name**: NCRelay
 
 ## Core Features:
 

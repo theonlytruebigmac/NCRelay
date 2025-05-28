@@ -36,3 +36,6 @@ Dockerfile
 # SQLite database file
 app.db
 app.db-journal
+
+# ignore environment files
+.env

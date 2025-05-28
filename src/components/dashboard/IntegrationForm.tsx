@@ -41,7 +41,7 @@ export type IntegrationFormValues = z.infer<typeof integrationSchema>;
 
 interface IntegrationFormProps {
   initialData?: Partial<Integration>; // Keep for initial population if formInstance is not used for that
-  onSubmit: (data: IntegrationFormValues) => Promise<void>; // onSubmit now expects to be wrapped by form.handleSubmit
+  onSubmit: (data: IntegrationFormValues) => Promise<void>; // Raw handler that receives form data
   isSubmitting?: boolean;
   submitButtonText?: string;
   formInstance?: UseFormReturn<IntegrationFormValues>; // Prop to receive form instance
@@ -93,9 +93,9 @@ export function IntegrationForm({
       case 'teams':
         recommendedFormat = 'text';
         return [
-          { value: "text", label: "Plain Text (Recommended for this platform)" },
-          { value: "json", label: "JSON (For advanced formatting like Slack Blocks, Discord Embeds, Teams Cards)" },
-          { value: "xml", label: "XML (Passthrough - not typically used by this platform)" },
+          { value: "text", label: "Plain Text" },
+          { value: "json", label: "JSON (For Advanced Formatting)" },
+          { value: "xml", label: "XML Passthrough" },
         ];
       case 'generic_webhook':
       default:
@@ -110,7 +110,7 @@ export function IntegrationForm({
   // Effect to update targetFormat when platform changes, if the current one isn't ideal
   useEffect(() => {
     const currentTargetFormat = form.getValues('targetFormat');
-    let idealFormat = 'json';
+    let idealFormat: 'json' | 'xml' | 'text' = 'json';
     if (selectedPlatform === 'slack' || selectedPlatform === 'discord' || selectedPlatform === 'teams') {
       idealFormat = 'text';
     }
@@ -132,8 +132,8 @@ export function IntegrationForm({
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          {/* The onSubmit here is the one passed from the parent, already wrapped with form.handleSubmit */}
-          <form onSubmit={onSubmit} className="space-y-8">
+          {/* The onSubmit here needs to be wrapped with form.handleSubmit */}
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <FormField
               control={form.control}
               name="name"
@@ -225,7 +225,7 @@ export function IntegrationForm({
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        The format RelayZen will send to the webhook. Basic server-side transformations will be applied.
+                        The format NCRelay will send to the webhook. Basic server-side transformations will be applied.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

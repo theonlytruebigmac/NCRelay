@@ -4,67 +4,77 @@
 import type { User } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
-import React, { createContext, useContext, useEffect, useState }
-from 'react';
-import { loginAction, updateUserNameAction as updateUserNameDbAction, updateUserEmailAction as updateUserEmailDbAction } from '@/app/(auth)/actions';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { loginAction, logoutAction, updateUserNameAction as updateUserNameDbAction, updateUserEmailAction as updateUserEmailDbAction } from '@/app/(auth)/actions';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (formData: FormData) => Promise<{ success: boolean, error?: string }>;
-  logout: () => void;
+  login: (formData: FormData) => Promise<{ success?: boolean; error?: string }>;
+  logout: () => Promise<void>;
   updateUserName: (formData: FormData) => Promise<{ success: boolean, error?: string }>;
   updateUserEmail: (formData: FormData) => Promise<{ success: boolean, error?: string }>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const AUTH_STORAGE_KEY = "relayzen_auth_user";
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    setIsLoading(true);
+  // Fetch current user from server
+  const refreshUser = async () => {
     try {
-      const storedUser = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+      const response = await fetch('/api/auth/me', {
+        method: 'GET',
+        credentials: 'include', // Include cookies
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+      } else {
+        setUser(null);
       }
     } catch (error) {
-      console.error("Failed to parse stored user:", error);
-      localStorage.removeItem(AUTH_STORAGE_KEY);
+      console.error('Failed to fetch user:', error);
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  const login = async (formData: FormData): Promise<{ success: boolean, error?: string }> => {
-    setIsLoading(true);
-    const result = await loginAction(formData);
-    setIsLoading(false);
-
-    if (result.user) {
-      setUser(result.user);
-      try {
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(result.user));
-      } catch (error) {
-        console.error("Failed to save user to localStorage:", error);
-      }
-      return { success: true };
-    }
-    return { success: false, error: result.error || "Login failed." };
   };
 
-  const logout = () => {
-    setUser(null);
+  useEffect(() => {
+    refreshUser();
+  }, []);
+
+  const login = async (formData: FormData) => {
     try {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
+      const result = await loginAction(formData);
+      if (result.success) {
+        // Refresh user data to get the authenticated user
+        await refreshUser();
+        return { success: true };
+      }
+      return result;
     } catch (error) {
-      console.error("Failed to remove user from localStorage:", error);
+      console.error('Login failed:', error);
+      return { error: 'Login failed. Please try again.' };
     }
-    router.push('/login'); // Ensure redirect happens
+  };
+
+  const logout = async () => {
+    try {
+      await logoutAction();
+      setUser(null);
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Even if logout action fails, clear local state
+      setUser(null);
+      router.push('/login');
+    }
   };
 
   const updateUserName = async (formData: FormData): Promise<{ success: boolean, error?: string }> => {
@@ -75,11 +85,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (result.success && result.user) {
       setUser(result.user);
-      try {
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(result.user));
-      } catch (error) {
-        console.error("Failed to update user name in localStorage:", error);
-      }
       return { success: true };
     }
     return { success: false, error: result.error || "Failed to update name." };
@@ -93,19 +98,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (result.success && result.user) {
       setUser(result.user);
-      try {
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(result.user));
-      } catch (error) {
-        console.error("Failed to update user email in localStorage:", error);
-      }
       return { success: true };
     }
     return { success: false, error: result.error || "Failed to update email." };
   };
 
-
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, updateUserName, updateUserEmail }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, updateUserName, updateUserEmail, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

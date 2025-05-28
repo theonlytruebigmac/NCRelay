@@ -76,9 +76,10 @@ export function LoginForm() {
   return (
     <Card className="w-full shadow-xl">
       <CardHeader className="items-center">
-        <Logo className="mb-4 h-auto w-32" />
-        <CardTitle className="text-2xl">Welcome Back</CardTitle>
-        <CardDescription>Enter your credentials to access RelayZen.</CardDescription>
+        <CardTitle className="text-2xl font-bold">Login to NCRelay</CardTitle>
+        <CardDescription className="text-sm text-muted-foreground">
+          Please enter your email and password to access your dashboard.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
