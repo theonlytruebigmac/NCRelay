@@ -39,6 +39,18 @@ export interface LoggedIntegrationAttempt {
   responseBody?: string; 
 }
 
+export interface SecuritySettings {
+  id: string; // Should be a fixed value like 'default_security_settings'
+  rateLimitMaxRequests: number; // Requests per window
+  rateLimitWindowMs: number; // Time window in milliseconds
+  maxPayloadSize: number; // In bytes
+  logRetentionDays: number; // How long to keep logs
+  apiRateLimitEnabled: boolean; // Whether rate limiting is enabled
+  webhookRateLimitEnabled: boolean; // Whether rate limiting is enabled for webhook calls
+  ipWhitelist: string[]; // List of IPs that bypass rate limiting
+  enableDetailedErrorLogs: boolean; // Whether to include detailed error info in logs
+}
+
 export interface LogEntry {
   id: string; 
   timestamp: string; 

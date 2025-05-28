@@ -120,11 +120,13 @@ export default function GeneralSettingsPage() {
         
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center"><ShieldCheck className="mr-2 h-5 w-5 text-primary" /> Security</CardTitle>
-            <CardDescription>Manage security settings for your account. (Placeholder)</CardDescription>
+            <CardTitle className="flex items-center"><ShieldCheck className="mr-2 h-5 w-5 text-primary" /> Security & Rate Limiting</CardTitle>
+            <CardDescription>Manage security, rate limiting, and logging settings.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button disabled>Manage Security (Coming Soon)</Button>
+            <Link href="/dashboard/settings/security" passHref>
+              <Button>Manage Security Settings</Button>
+            </Link>
           </CardContent>
         </Card>
       </div>

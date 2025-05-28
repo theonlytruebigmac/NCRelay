@@ -5,7 +5,8 @@ import fs from 'fs';
 // Import all migrations statically
 // When adding a new migration, import it here
 import migration001 from './001-initial-schema';
-// import migration002 from './002-your-migration-name';
+import migration002 from './002-add-description-to-endpoints';
+import migration003 from './003-add-security-settings';
 // Add new migration imports here...
 
 const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/app.db' : path.join(process.cwd(), 'app.db');
@@ -50,11 +51,16 @@ function getAllMigrations(): Migration[] {
       up: migration001.up
     },
     // Add new migrations here:
-    // {
-    //   id: 2,
-    //   name: migration002.name || 'your-migration-name',
-    //   up: migration002.up
-    // },
+    {
+      id: 2,
+      name: migration002.name || 'add-description-to-endpoints',
+      up: migration002.up
+    },
+    {
+      id: 3,
+      name: migration003.name || 'add-security-settings',
+      up: migration003.up
+    },
   ];
   
   return migrations.sort((a, b) => a.id - b.id);
