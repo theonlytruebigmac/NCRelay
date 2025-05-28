@@ -21,7 +21,7 @@ export interface User {
 export interface ApiEndpointConfig {
   id: string;
   name: string; 
-  path: string; 
+  path: string; // This will now be a secure UUID instead of user-defined
   associatedIntegrationIds: string[]; 
   createdAt: string; 
 }

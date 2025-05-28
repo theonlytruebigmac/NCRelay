@@ -77,8 +77,6 @@ export function LoginForm() {
     <Card className="w-full shadow-xl">
       <CardHeader className="items-center">
         <Logo className="mb-4 h-auto w-32" />
-        <CardTitle className="text-2xl">Welcome Back</CardTitle>
-        <CardDescription>Enter your credentials to access RelayZen.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>

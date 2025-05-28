@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, AlertCircle, CheckCircle, XCircle, HelpCircle, ServerCrash } from "lucide-react";
+import { Eye, AlertCircle, CheckCircle, XCircle, HelpCircle, ServerCrash, Trash2, AlertTriangle } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import {
   Dialog,
@@ -26,12 +26,24 @@ import {
   DialogClose,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Skeleton } from "@/components/ui/skeleton";
-import { getRequestLogsAction } from "./actions"; // Updated import
+import { getRequestLogsAction, deleteLogEntryAction, deleteAllLogEntriesAction } from "./actions"; // Updated import
+import { useToast } from "@/hooks/use-toast";
 
 const StatusIcon = ({ status }: { status: LogEntry['processingSummary']['overallStatus'] }) => {
   switch (status) {
@@ -66,7 +78,10 @@ const IntegrationStatusIcon = ({ status }: { status: LoggedIntegrationAttempt['s
 export default function LogsPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     async function fetchLogs() {
@@ -87,6 +102,48 @@ export default function LogsPage() {
 
   const handleViewDetails = (log: LogEntry) => {
     setSelectedLog(log);
+  };
+
+  const handleDeleteLog = async (logId: string) => {
+    setIsDeleting(logId);
+    try {
+      await deleteLogEntryAction(logId);
+      setLogs(logs.filter(log => log.id !== logId));
+      toast({
+        title: "Log deleted",
+        description: "The log entry has been successfully deleted.",
+      });
+    } catch (error) {
+      console.error("Failed to delete log:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the log entry. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const handleDeleteAllLogs = async () => {
+    setIsDeletingAll(true);
+    try {
+      await deleteAllLogEntriesAction();
+      setLogs([]);
+      toast({
+        title: "All logs deleted",
+        description: "All log entries have been successfully deleted.",
+      });
+    } catch (error) {
+      console.error("Failed to delete all logs:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete all log entries. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingAll(false);
+    }
   };
   
   const getStatusBadgeVariant = (status: LogEntry['processingSummary']['overallStatus']) => {
@@ -138,6 +195,45 @@ export default function LogsPage() {
       description="Inspect incoming requests and their relay status. (Last 50 entries)"
     >
       <Card className="shadow-lg">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div>
+            <CardTitle>Request Logs</CardTitle>
+            <CardDescription>
+              Recent webhook requests and their processing status
+            </CardDescription>
+          </div>
+          {logs.length > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  disabled={isDeletingAll}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {isDeletingAll ? "Deleting..." : "Delete All"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete All Log Entries</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete all log entries from the database.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleDeleteAllLogs}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete All
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </CardHeader>
         <CardContent className="pt-6">
           {logs.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 p-12 text-center min-h-[300px]">
@@ -179,13 +275,14 @@ export default function LogsPage() {
                         <span className="ml-2 text-xs text-muted-foreground">{log.processingSummary.message}</span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Dialog onOpenChange={(open) => !open && setSelectedLog(null)}>
-                          <DialogTrigger asChild>
-                            <Button variant="outline" size="sm" onClick={() => handleViewDetails(log)}>
-                              <Eye className="mr-2 h-4 w-4" /> Details
-                            </Button>
-                          </DialogTrigger>
-                          {selectedLog && selectedLog.id === log.id && (
+                        <div className="flex items-center justify-end gap-2">
+                          <Dialog onOpenChange={(open) => !open && setSelectedLog(null)}>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="sm" onClick={() => handleViewDetails(log)}>
+                                <Eye className="mr-2 h-4 w-4" /> Details
+                              </Button>
+                            </DialogTrigger>
+                            {selectedLog && selectedLog.id === log.id && (
                             <DialogContent className="max-w-3xl">
                               <DialogHeader>
                                 <DialogTitle>Log Details: {selectedLog.apiEndpointName || selectedLog.apiEndpointPath}</DialogTitle>
@@ -292,6 +389,36 @@ export default function LogsPage() {
                             </DialogContent>
                           )}
                         </Dialog>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              disabled={isDeleting === log.id}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              {isDeleting === log.id ? "Deleting..." : "Delete"}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Log Entry</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete this log entry from the database.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDeleteLog(log.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

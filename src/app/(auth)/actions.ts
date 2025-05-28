@@ -7,13 +7,15 @@ import * as db from '@/lib/db';
 import type { User } from '@/lib/types';
 import { sendPasswordResetEmail } from '@/lib/email';
 import { revalidatePath } from 'next/cache';
+import { setAuthCookie, removeAuthCookie, getCurrentUser } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1, "Password cannot be empty."), // Min 1 for presence, actual length check is on hashing
 });
 
-export async function loginAction(formData: FormData): Promise<{ user?: User; error?: string }> {
+export async function loginAction(formData: FormData): Promise<{ success?: boolean; error?: string }> {
   const validatedFields = loginSchema.safeParse(Object.fromEntries(formData.entries()));
 
   if (!validatedFields.success) {
@@ -35,7 +37,16 @@ export async function loginAction(formData: FormData): Promise<{ user?: User; er
   }
   
   const { hashedPassword, ...userToReturn } = existingUser;
-  return { user: userToReturn as User };
+  
+  // Set authentication cookie
+  await setAuthCookie(userToReturn as User);
+  
+  return { success: true };
+}
+
+export async function logoutAction(): Promise<void> {
+  await removeAuthCookie();
+  redirect('/login');
 }
 
 
@@ -168,7 +179,7 @@ export async function changePasswordAction(userId: string, formData: FormData): 
 
     if (!validatedFields.success) {
         const fieldErrors = validatedFields.error.flatten().fieldErrors;
-        return { error: fieldErrors.currentPassword?.[0] || fieldErrors.newPassword?.[0] || fieldErrors._errors?.join(", ") || "Invalid input." };
+        return { error: fieldErrors.currentPassword?.[0] || fieldErrors.newPassword?.[0] || "Invalid input." };
     }
     
     const { currentPassword, newPassword } = validatedFields.data;

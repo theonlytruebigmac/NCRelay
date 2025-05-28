@@ -20,8 +20,8 @@ export function AppSidebar({ className }: React.HTMLAttributes<HTMLDivElement>) 
     <div className={cn("h-full border-r bg-sidebar text-sidebar-foreground", className)}>
       <div className="flex h-full max-h-screen flex-col">
         <div className="flex h-16 items-center border-b border-sidebar-border px-4">
-          <Link href="/dashboard" className="flex items-center space-x-2">
-            <Logo className="h-auto w-24 fill-primary" />
+          <Link href="/dashboard" className="flex items-center space-x-2 w-full">
+            <Logo className="h-auto w-full max-w-[160px] fill-primary" />
           </Link>
           {/* User Avatar Dropdown removed from here */}
         </div>

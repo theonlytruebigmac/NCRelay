@@ -10,7 +10,7 @@ export type NavItem = {
 };
 
 export const siteConfig = {
-  name: "RelayZen",
+  name: "NCRelay",
   description: "Securely relay notifications to your favorite platforms.",
   mainNav: [
     {

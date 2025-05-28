@@ -15,11 +15,22 @@ let db: Database.Database;
 
 function getDB() {
   if (!db) {
-    db = new Database(DB_PATH, { /* verbose: console.log */ });
-    db.pragma('journal_mode = WAL');
-    initializeDBSchema();
-    // createInitialAdminUserIfNotExists is async, call it carefully if needed during init
-    // For now, it's called explicitly after getDB() ensures db is initialized
+    try {
+      db = new Database(DB_PATH, { /* verbose: console.log */ });
+      db.pragma('journal_mode = WAL');
+      initializeDBSchema();
+      // createInitialAdminUserIfNotExists is async, call it carefully if needed during init
+      // For now, it's called explicitly after getDB() ensures db is initialized
+    } catch (error) {
+      // During build, database might not be accessible - create a dummy database
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('Database not accessible during build, creating temporary database');
+        db = new Database(':memory:');
+        initializeDBSchema();
+      } else {
+        throw error;
+      }
+    }
   }
   return db;
 }
@@ -237,11 +248,11 @@ export async function getIntegrationById(id: string): Promise<Integration | null
   };
 }
 
-export async function addIntegration(integration: Omit<Integration, 'id'>): Promise<Integration> {
+export async function addIntegration(integration: Omit<Integration, 'id'>, userId: string): Promise<Integration> {
   const newIntegration: Integration = { id: uuidv4(), ...integration };
   const encryptedWebhookUrl = await encrypt(newIntegration.webhookUrl);
   const stmt = getDB().prepare(
-    'INSERT INTO integrations (id, name, platform, webhookUrl, enabled, targetFormat) VALUES (?, ?, ?, ?, ?, ?)'
+    'INSERT INTO integrations (id, name, platform, webhookUrl, enabled, targetFormat, createdAt, userId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   );
   stmt.run(
     newIntegration.id,
@@ -249,7 +260,9 @@ export async function addIntegration(integration: Omit<Integration, 'id'>): Prom
     newIntegration.platform,
     encryptedWebhookUrl,
     newIntegration.enabled ? 1 : 0,
-    newIntegration.targetFormat
+    newIntegration.targetFormat,
+    new Date().toISOString(),
+    userId
   );
   const fetchedIntegration = await getIntegrationById(newIntegration.id);
   return fetchedIntegration!;
@@ -305,11 +318,12 @@ export async function getApiEndpointByPath(path: string): Promise<ApiEndpointCon
   return row ? { ...row, associatedIntegrationIds: JSON.parse(row.associatedIntegrationIds as unknown as string || '[]') } : null;
 }
 
-export async function addApiEndpoint(endpoint: Omit<ApiEndpointConfig, 'id' | 'createdAt'>): Promise<ApiEndpointConfig> {
+export async function addApiEndpoint(endpoint: Omit<ApiEndpointConfig, 'id' | 'createdAt' | 'path'>): Promise<ApiEndpointConfig> {
   const newEndpoint: ApiEndpointConfig = {
     id: uuidv4(),
+    path: uuidv4(), // Generate a secure random UUID for the path
     ...endpoint,
-    associatedIntegrationIds: JSON.stringify(endpoint.associatedIntegrationIds || []),
+    associatedIntegrationIds: endpoint.associatedIntegrationIds || [],
     createdAt: new Date().toISOString(),
   };
   const stmt = getDB().prepare(
@@ -319,27 +333,26 @@ export async function addApiEndpoint(endpoint: Omit<ApiEndpointConfig, 'id' | 'c
     newEndpoint.id,
     newEndpoint.name,
     newEndpoint.path,
-    newEndpoint.associatedIntegrationIds, // Store as JSON string
+    JSON.stringify(newEndpoint.associatedIntegrationIds),
     newEndpoint.createdAt
   );
    return {
     ...newEndpoint,
-    associatedIntegrationIds: JSON.parse(newEndpoint.associatedIntegrationIds as unknown as string)
+    associatedIntegrationIds: newEndpoint.associatedIntegrationIds
   };
 }
 
-export async function updateApiEndpoint(id: string, endpoint: Partial<Omit<ApiEndpointConfig, 'id' | 'createdAt'>>): Promise<ApiEndpointConfig | null> {
+export async function updateApiEndpoint(id: string, endpoint: Partial<Omit<ApiEndpointConfig, 'id' | 'createdAt' | 'path'>>): Promise<ApiEndpointConfig | null> {
   const existing = await getApiEndpointById(id); 
   if (!existing) return null;
 
   const updatedEndpointData = { ...existing, ...endpoint, id };
 
   const stmt = getDB().prepare(
-    'UPDATE api_endpoints SET name = ?, path = ?, associatedIntegrationIds = ? WHERE id = ?'
+    'UPDATE api_endpoints SET name = ?, associatedIntegrationIds = ? WHERE id = ?'
   );
   stmt.run(
     updatedEndpointData.name,
-    updatedEndpointData.path,
     JSON.stringify(updatedEndpointData.associatedIntegrationIds || []), // Store as JSON string
     id
   );
@@ -440,14 +453,36 @@ export async function addRequestLog(log: Omit<LogEntry, 'id' | 'timestamp'>): Pr
   };
 }
 
+export async function deleteRequestLog(logId: string): Promise<void> {
+  const stmt = getDB().prepare('DELETE FROM request_logs WHERE id = ?');
+  stmt.run(logId);
+}
+
+export async function deleteAllRequestLogs(): Promise<void> {
+  const stmt = getDB().prepare('DELETE FROM request_logs');
+  stmt.run();
+}
+
 // Helper for dashboard stats
-export async function getDashboardStats(): Promise<{ activeIntegrationsCount: number; relayedNotificationsCount: number; }> {
+export async function getDashboardStats(): Promise<{ 
+    activeIntegrationsCount: number; 
+    relayedNotificationsCount: number;
+    apiEndpointsCount: number;
+    apiEndpointsRequestsCount: number;
+}> {
     const dbInstance = getDB();
     const activeIntegrationsCountResult = dbInstance.prepare('SELECT COUNT(*) as count FROM integrations WHERE enabled = 1').get() as { count: number };
     const totalLogsCountResult = dbInstance.prepare('SELECT COUNT(*) as count FROM request_logs').get() as { count: number };
+    const apiEndpointsCountResult = dbInstance.prepare('SELECT COUNT(*) as count FROM api_endpoints').get() as { count: number };
+    
+    // Get count of API endpoint requests (request_logs with non-null apiEndpointId)
+    const apiEndpointsRequestsCountResult = dbInstance.prepare('SELECT COUNT(*) as count FROM request_logs WHERE apiEndpointId IS NOT NULL').get() as { count: number };
+    
     return {
         activeIntegrationsCount: activeIntegrationsCountResult.count,
         relayedNotificationsCount: totalLogsCountResult.count,
+        apiEndpointsCount: apiEndpointsCountResult.count,
+        apiEndpointsRequestsCount: apiEndpointsRequestsCountResult.count,
     };
 }
 

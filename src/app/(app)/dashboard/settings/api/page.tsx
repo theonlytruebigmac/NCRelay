@@ -61,10 +61,6 @@ type IntegrationForSelection = Pick<Integration, 'id' | 'name' | 'platform' | 'e
 
 const endpointFormSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters.").max(50, "Name must be at most 50 characters."),
-  path: z.string()
-    .min(1, "Path cannot be empty.")
-    .regex(/^[a-z0-9_-]+$/, "Path can only contain lowercase letters, numbers, hyphens, and underscores.")
-    .max(50, "Path must be at most 50 characters."),
   associatedIntegrationIds: z.array(z.string()).default([]),
 });
 
@@ -98,7 +94,6 @@ export default function ApiEndpointsPage() {
     resolver: zodResolver(endpointFormSchema),
     defaultValues: {
       name: "",
-      path: "",
       associatedIntegrationIds: [],
     },
   });
@@ -131,23 +126,15 @@ export default function ApiEndpointsPage() {
     if (endpoint) {
       setEditingEndpoint(endpoint);
       form.setValue("name", endpoint.name);
-      form.setValue("path", endpoint.path);
       form.setValue("associatedIntegrationIds", Array.isArray(endpoint.associatedIntegrationIds) ? [...endpoint.associatedIntegrationIds] : []);
     } else {
       setEditingEndpoint(null);
       form.setValue("name", "");
-      form.setValue("path", "");
       form.setValue("associatedIntegrationIds", []);
     }
     setShowEndpointDialog(true);
   };
   
-  const handleEndpointPathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
-    const sanitizedPath = value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
-    form.setValue("path", sanitizedPath, { shouldValidate: true });
-  };
-
   const handleToggleIntegrationForEndpoint = (integrationId: string) => {
     const currentIds = form.getValues("associatedIntegrationIds");
     const newIds = currentIds.includes(integrationId)
@@ -160,7 +147,6 @@ export default function ApiEndpointsPage() {
     startTransition(async () => {
         const formData = new FormData();
         formData.append('name', values.name);
-        formData.append('path', values.path);
         values.associatedIntegrationIds.forEach(id => formData.append('associatedIntegrationIds[]', id));
 
         form.clearErrors();
@@ -257,7 +243,7 @@ export default function ApiEndpointsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead>Path Segment</TableHead>
+                    <TableHead>Secure UUID Path</TableHead>
                     <TableHead>Full Endpoint URL</TableHead>
                     <TableHead>Associated Integrations</TableHead>
                     <TableHead>Created</TableHead>
@@ -312,7 +298,7 @@ export default function ApiEndpointsPage() {
             <form onSubmit={form.handleSubmit(onSubmitEndpointForm)} className="space-y-6">
                 <DialogHeader>
                   <DialogTitle>{editingEndpoint ? "Edit" : "Add New"} API Endpoint</DialogTitle>
-                  <DialogDescription>Configure the path and linked integrations for this endpoint. All endpoints are public.</DialogDescription>
+                  <DialogDescription>Configure a custom endpoint name and linked integrations. The endpoint path will use a secure, randomly generated UUID to prevent enumeration attacks.</DialogDescription>
                 </DialogHeader>
                 
                 <FormField
@@ -329,41 +315,23 @@ export default function ApiEndpointsPage() {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="path"
-                  render={({ field }) => (
-                    <FormItem className="grid grid-cols-4 items-start gap-x-4 gap-y-1">
-                       <FormLabel htmlFor="endpointPath" className="text-right pt-2">Path Segment</FormLabel>
-                       <div className="col-span-3">
-                          <div className="flex items-center">
-                            <span 
-                              className="text-sm text-muted-foreground p-2 bg-muted rounded-l-md border border-input border-r-0 whitespace-nowrap overflow-hidden text-ellipsis flex-initial max-w-[50%]"
-                              title={`${origin}/api/custom/`}
-                            >
-                              {`${origin}/api/custom/`.length > 25 ? `...${`${origin}/api/custom/`.slice(-22)}` : `${origin}/api/custom/`}
-                            </span>
-                            <FormControl>
-                              <Input 
-                                id="endpointPath"
-                                {...field} 
-                                onChange={(e) => {
-                                  handleEndpointPathChange(e); // For sanitization
-                                  field.onChange(e); // For react-hook-form
-                                }}
-                                className="rounded-l-none flex-grow min-w-[100px]" 
-                                placeholder="your-unique-path"
-                                pattern="[a-z0-9_-]+"
-                                title="Lowercase letters, numbers, hyphens, underscores only."
-                                disabled={isPending}
-                              />
-                            </FormControl>
-                          </div>
-                          <FormMessage />
-                       </div>
-                    </FormItem>
-                  )}
-                />
+                {/* Show the secure endpoint path - either existing UUID or note about auto-generation */}
+                <div className="grid grid-cols-4 items-start gap-x-4 gap-y-1">
+                  <div className="text-right pt-2 text-sm font-medium">Endpoint URL</div>
+                  <div className="col-span-3">
+                    <div className="flex items-center">
+                      <span className="text-sm text-muted-foreground p-2 bg-muted rounded-l-md border border-input border-r-0 whitespace-nowrap overflow-hidden text-ellipsis flex-initial max-w-[50%]" title={`${origin}/api/custom/`}>
+                        {`${origin}/api/custom/`.length > 25 ? `...${`${origin}/api/custom/`.slice(-22)}` : `${origin}/api/custom/`}
+                      </span>
+                      <div className="p-2 bg-secondary/50 border border-input border-l-0 rounded-r-md flex-grow text-sm text-muted-foreground">
+                        {editingEndpoint ? editingEndpoint.path : "🔒 Secure UUID will be generated"}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {editingEndpoint ? "Secure UUID path cannot be changed for security." : "A random, secure UUID will be generated automatically to prevent enumeration attacks."}
+                    </p>
+                  </div>
+                </div>
                 
                 <FormField
                   control={form.control}
@@ -439,10 +407,10 @@ export default function ApiEndpointsPage() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-1">Example cURL command:</p>
-          <p className="text-xs text-muted-foreground mb-2">Replace <code>your-custom-path-segment</code> with one of your configured paths.</p>
+          <p className="text-xs text-muted-foreground mb-2">Replace <code>your-endpoint-uuid</code> with the UUID from one of your configured endpoints above.</p>
           <pre className="bg-muted p-3 rounded-md text-xs font-mono overflow-x-auto whitespace-pre-wrap">
             {`curl -X POST \\
-  ${origin}/api/custom/your-custom-path-segment \\
+  ${origin}/api/custom/your-endpoint-uuid \\
   -H 'Content-Type: application/xml' \\
   -d '<notification><message>Test via custom endpoint!</message></notification>'`}
           </pre>

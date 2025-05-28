@@ -49,7 +49,7 @@ export async function sendPasswordResetEmail(to: string, token: string): Promise
   const mailOptions: MailOptions = {
     to,
     from: settings.fromEmail,
-    subject: 'RelayZen - Password Reset Request',
+    subject: 'NCRelay - Password Reset Request',
     text: `You requested a password reset. Click this link to reset your password: ${resetLink}\n\nIf you did not request this, please ignore this email. This link will expire in 1 hour.`,
     html: `<p>You requested a password reset. Click the link below to reset your password:</p>
            <p><a href="${resetLink}">${resetLink}</a></p>

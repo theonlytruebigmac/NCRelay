@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -19,9 +19,21 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, SendHorizontal } from "lucide-react";
 import type { SmtpSettings } from "@/lib/types";
-import { saveSmtpSettingsAction } from "@/app/(app)/dashboard/settings/smtp/actions";
+import { 
+  saveSmtpSettingsAction, 
+  testSmtpSettingsAction 
+} from "@/app/(app)/dashboard/settings/smtp/actions";
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose
+} from "@/components/ui/dialog";
 
 // Define the schema locally as it's not exported from actions.ts anymore
 const smtpSettingsSchema = z.object({
@@ -44,6 +56,9 @@ interface SmtpSettingsFormProps {
 
 export function SmtpSettingsForm({ initialData, onFormSubmit }: SmtpSettingsFormProps) {
   const { toast } = useToast();
+  const [showTestDialog, setShowTestDialog] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
+  const [isTestingSmtp, setIsTestingSmtp] = useState(false);
   
   const form = useForm<SmtpSettingsFormValues>({
     resolver: zodResolver(smtpSettingsSchema),
@@ -73,7 +88,6 @@ export function SmtpSettingsForm({ initialData, onFormSubmit }: SmtpSettingsForm
     });
   }, [initialData, form]);
 
-
   async function onSubmit(values: SmtpSettingsFormValues) {
     const formData = new FormData();
     Object.entries(values).forEach(([key, value]) => {
@@ -98,10 +112,66 @@ export function SmtpSettingsForm({ initialData, onFormSubmit }: SmtpSettingsForm
             message: err.message,
           });
         });
-         toast({ variant: "destructive", title: "Validation Error", description: "Please check the form fields." });
+        toast({ variant: "destructive", title: "Validation Error", description: "Please check the form fields." });
       } else {
         toast({ variant: "destructive", title: "Error", description: result.message || "Failed to save SMTP settings." });
       }
+    }
+  }
+
+  async function handleTestSmtp() {
+    if (!form.getValues("host") || !form.getValues("user") || !form.getValues("fromEmail")) {
+      toast({ 
+        variant: "destructive", 
+        title: "Missing Information", 
+        description: "Please fill in host, user, and from email address fields first."
+      });
+      return;
+    }
+
+    if (!testEmail) {
+      toast({ 
+        variant: "destructive", 
+        title: "Missing Test Email", 
+        description: "Please provide an email address to send the test to."
+      });
+      return;
+    }
+
+    setIsTestingSmtp(true);
+    
+    try {
+      const formData = new FormData();
+      const values = form.getValues();
+      
+      // Add all SMTP settings
+      Object.entries(values).forEach(([key, value]) => {
+        if (typeof value === 'boolean') {
+          formData.append(key, value ? 'true' : 'false');
+        } else if (value !== undefined && value !== null) {
+          formData.append(key, String(value));
+        }
+      });
+      
+      // Add test email
+      formData.append('testEmail', testEmail);
+      
+      const result = await testSmtpSettingsAction(formData);
+      
+      if (result.success) {
+        toast({ title: "SMTP Test Successful", description: result.message });
+        setShowTestDialog(false);
+      } else {
+        toast({ variant: "destructive", title: "SMTP Test Failed", description: result.message });
+      }
+    } catch (error) {
+      toast({ 
+        variant: "destructive", 
+        title: "SMTP Test Error", 
+        description: error instanceof Error ? error.message : "An unknown error occurred"
+      });
+    } finally {
+      setIsTestingSmtp(false);
     }
   }
 
@@ -194,13 +264,71 @@ export function SmtpSettingsForm({ initialData, onFormSubmit }: SmtpSettingsForm
             </FormItem>
           )}
         />
-        <div className="flex justify-end">
+        <div className="flex justify-end space-x-2">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => setShowTestDialog(true)}
+            className="flex items-center"
+          >
+            <SendHorizontal className="mr-2 h-4 w-4" />
+            Test SMTP Settings
+          </Button>
           <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90">
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save SMTP Settings
           </Button>
         </div>
       </form>
+
+      {/* Test SMTP Dialog */}
+      <Dialog open={showTestDialog} onOpenChange={setShowTestDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Test SMTP Settings</DialogTitle>
+            <DialogDescription>
+              Enter an email address to send a test message. This will use your current SMTP settings without saving them.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="testEmail">Recipient Email</Label>
+              <Input
+                id="testEmail"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                placeholder="your-email@example.com"
+                type="email"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowTestDialog(false)}
+              disabled={isTestingSmtp}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleTestSmtp} 
+              disabled={isTestingSmtp}
+            >
+              {isTestingSmtp ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Testing...
+                </>
+              ) : (
+                <>
+                  <SendHorizontal className="mr-2 h-4 w-4" />
+                  Send Test Email
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Form>
   );
 }

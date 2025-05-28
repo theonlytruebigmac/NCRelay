@@ -8,10 +8,6 @@ import type { ApiEndpointConfig } from '@/lib/types';
 
 const apiEndpointSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters.").max(50, "Name must be at most 50 characters."),
-  path: z.string()
-    .min(1, "Path cannot be empty.")
-    .regex(/^[a-z0-9_-]+$/, "Path can only contain lowercase letters, numbers, hyphens, and underscores.")
-    .max(50, "Path must be at most 50 characters."),
   associatedIntegrationIds: z.array(z.string()).default([]),
 });
 
@@ -31,23 +27,15 @@ export async function getIntegrationsForEndpointSelectionAction() {
 
 export async function addApiEndpointAction(formData: FormData) {
   const name = formData.get('name') as string;
-  const path = formData.get('path') as string;
   const associatedIntegrationIds = formData.getAll('associatedIntegrationIds[]') as string[];
 
   const validatedFields = apiEndpointSchema.safeParse({
     name,
-    path,
     associatedIntegrationIds,
   });
 
   if (!validatedFields.success) {
     return { errors: validatedFields.error.flatten().fieldErrors };
-  }
-
-  const existingEndpoints = await db.getApiEndpoints();
-  const pathExists = existingEndpoints.some(ep => ep.path === validatedFields.data.path);
-  if (pathExists) {
-      return { errors: { path: [`An endpoint with path "/api/custom/${validatedFields.data.path}" already exists.`] }};
   }
 
   try {
@@ -62,23 +50,15 @@ export async function addApiEndpointAction(formData: FormData) {
 
 export async function updateApiEndpointAction(id: string, formData: FormData) {
   const name = formData.get('name') as string;
-  const path = formData.get('path') as string;
   const associatedIntegrationIds = formData.getAll('associatedIntegrationIds[]') as string[];
 
   const validatedFields = apiEndpointSchema.safeParse({
     name,
-    path,
     associatedIntegrationIds,
   });
 
   if (!validatedFields.success) {
     return { errors: validatedFields.error.flatten().fieldErrors };
-  }
-  
-  const existingEndpoints = await db.getApiEndpoints();
-  const pathExists = existingEndpoints.some(ep => ep.path === validatedFields.data.path && ep.id !== id);
-  if (pathExists) {
-      return { errors: { path: [`An endpoint with path "/api/custom/${validatedFields.data.path}" already exists.`] }};
   }
 
   try {

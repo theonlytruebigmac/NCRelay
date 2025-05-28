@@ -4,6 +4,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import * as db from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
 import type { Integration, Platform } from '@/lib/types';
 
 const integrationSchema = z.object({
@@ -23,15 +24,21 @@ export async function getIntegrationByIdAction(id: string): Promise<Integration 
 }
 
 export async function addIntegrationAction(formData: FormData) {
+  // Get current authenticated user
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "Authentication required." };
+  }
+
   const data = Object.fromEntries(formData.entries());
   // Convert 'enabled' from string 'on'/'off' or value to boolean
-  data.enabled = data.enabled === 'on' || data.enabled === 'true' || data.enabled === true;
+  const enabledValue = data.enabled === 'on' || data.enabled === 'true';
 
   const validatedFields = integrationSchema.safeParse({
     name: data.name,
     platform: data.platform,
     webhookUrl: data.webhookUrl,
-    enabled: data.enabled,
+    enabled: enabledValue,
     targetFormat: data.targetFormat,
   });
 
@@ -44,7 +51,7 @@ export async function addIntegrationAction(formData: FormData) {
   }
 
   try {
-    await db.addIntegration(validatedFields.data);
+    await db.addIntegration(validatedFields.data, user.id);
     revalidatePath('/dashboard/integrations');
     return { success: true };
   } catch (error) {
@@ -54,14 +61,20 @@ export async function addIntegrationAction(formData: FormData) {
 }
 
 export async function updateIntegrationAction(id: string, formData: FormData) {
+  // Get current authenticated user
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "Authentication required." };
+  }
+
   const data = Object.fromEntries(formData.entries());
-  data.enabled = data.enabled === 'on' || data.enabled === 'true' || data.enabled === true;
+  const enabledValue = data.enabled === 'on' || data.enabled === 'true';
   
   const validatedFields = integrationSchema.safeParse({
     name: data.name,
     platform: data.platform,
     webhookUrl: data.webhookUrl,
-    enabled: data.enabled,
+    enabled: enabledValue,
     targetFormat: data.targetFormat,
   });
 
@@ -87,6 +100,12 @@ export async function updateIntegrationAction(id: string, formData: FormData) {
 }
 
 export async function deleteIntegrationAction(id: string) {
+  // Get current authenticated user
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "Authentication required." };
+  }
+
   try {
     const success = await db.deleteIntegration(id);
     if (!success) {
@@ -101,6 +120,12 @@ export async function deleteIntegrationAction(id: string) {
 }
 
 export async function toggleIntegrationEnabledAction(id: string, enabled: boolean) {
+  // Get current authenticated user
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "Authentication required." };
+  }
+
   try {
     const integration = await db.getIntegrationById(id);
     if (!integration) {

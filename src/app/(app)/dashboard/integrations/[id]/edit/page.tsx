@@ -127,7 +127,7 @@ export default function EditIntegrationPage() {
       <IntegrationForm
         formInstance={form} // Pass the form instance
         initialData={integration} // Keep initialData for default values setup if needed by form
-        onSubmit={form.handleSubmit(handleSubmit)} // Use form.handleSubmit
+        onSubmit={handleSubmit} // Pass raw handler
         isSubmitting={isSubmitting}
         submitButtonText="Save Changes"
       />

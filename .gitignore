@@ -36,3 +36,7 @@ Dockerfile
 # SQLite database file
 app.db
 app.db-journal
+
+.env
+.env*.local
+!.env.example
