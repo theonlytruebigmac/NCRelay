@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
   experimental: {
     allowedDevOrigins: [
       'ncrelay.syschimp.com',
-      'tik.syschimp.com',
+      'https://ncrelay.syschimp.com',
       'localhost:9003',
       '172.16.103.88:9003'
     ],

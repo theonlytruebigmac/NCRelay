@@ -1,4 +1,3 @@
-
 'use server';
 import Database from 'better-sqlite3';
 import type { Integration, ApiEndpointConfig, LogEntry, User, SmtpSettings } from './types';
@@ -6,12 +5,19 @@ import { v4 as uuidv4 } from 'uuid';
 import { encrypt, decrypt } from './crypto';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-
+import { runMigrations } from '../migrations';
 
 const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/app.db' : 'app.db';
 const SMTP_SETTINGS_ID = 'default_settings';
 
 let db: Database.Database;
+
+// Define migration interfaces
+interface Migration {
+  id: number;
+  name: string;
+  up: (db: Database.Database) => void;
+}
 
 function getDB() {
   if (!db) {
@@ -35,87 +41,17 @@ function getDB() {
   return db;
 }
 
-function initializeDBSchema() {
-  const createUsersTable = `
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      name TEXT,
-      hashedPassword TEXT NOT NULL,
-      isAdmin INTEGER DEFAULT 0,
-      createdAt TEXT NOT NULL,
-      updatedAt TEXT NOT NULL
-    );
-  `;
-
-  const createPasswordResetTokensTable = `
-    CREATE TABLE IF NOT EXISTS password_reset_tokens (
-      id TEXT PRIMARY KEY,
-      userId TEXT NOT NULL,
-      token TEXT NOT NULL UNIQUE,
-      expiresAt TEXT NOT NULL,
-      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-    );
-  `;
-
-  const createIntegrationsTable = `
-    CREATE TABLE IF NOT EXISTS integrations (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      platform TEXT NOT NULL,
-      webhookUrl TEXT NOT NULL, -- Will be encrypted
-      enabled INTEGER NOT NULL,
-      targetFormat TEXT NOT NULL
-    );
-  `;
-
-  const createApiEndpointsTable = `
-    CREATE TABLE IF NOT EXISTS api_endpoints (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      path TEXT NOT NULL UNIQUE,
-      associatedIntegrationIds TEXT NOT NULL, -- JSON string array
-      createdAt TEXT NOT NULL -- ISO8601 string
-    );
-  `;
-
-  const createRequestLogsTable = `
-    CREATE TABLE IF NOT EXISTS request_logs (
-      id TEXT PRIMARY KEY,
-      timestamp TEXT NOT NULL, -- ISO8601 string
-      apiEndpointId TEXT,
-      apiEndpointName TEXT,
-      apiEndpointPath TEXT NOT NULL,
-      incomingRequestIp TEXT,
-      incomingRequestMethod TEXT NOT NULL,
-      incomingRequestHeaders TEXT NOT NULL, -- JSON string, will be encrypted
-      incomingRequestBodyRaw TEXT NOT NULL, -- Will be encrypted
-      processingOverallStatus TEXT NOT NULL,
-      processingMessage TEXT NOT NULL,
-      integrationAttempts TEXT -- JSON string array of LoggedIntegrationAttempt, will be encrypted
-    );
-  `;
-  
-  const createSmtpSettingsTable = `
-    CREATE TABLE IF NOT EXISTS smtp_settings (
-      id TEXT PRIMARY KEY, -- Should always be 'default_settings'
-      host TEXT NOT NULL,
-      port INTEGER NOT NULL,
-      user TEXT NOT NULL,
-      password TEXT NOT NULL, -- Encrypted
-      secure INTEGER NOT NULL, -- Boolean (0 or 1)
-      fromEmail TEXT NOT NULL,
-      appBaseUrl TEXT NOT NULL
-    );
-  `;
-
-  const dbInstance = getDB(); // Ensure db is initialized before exec
-  dbInstance.exec(createUsersTable);
-  dbInstance.exec(createPasswordResetTokensTable);
-  dbInstance.exec(createIntegrationsTable);
-  dbInstance.exec(createApiEndpointsTable);
-  dbInstance.exec(createRequestLogsTable);
-  dbInstance.exec(createSmtpSettingsTable);
+// Modified to use migration system
+async function initializeDBSchema() {
+  try {
+    // Run migrations on application startup
+    // Note: For a production environment, you might want to run migrations
+    // separately from your application startup (using npm run migrate)
+    await runMigrations();
+  } catch (error) {
+    console.error('Failed to run migrations during app startup:', error);
+    // Don't throw - app should continue as migration CLI can be used to resolve issues
+  }
 }
 
 async function createInitialAdminUserIfNotExists() {
