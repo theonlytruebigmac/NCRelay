@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -239,9 +238,9 @@ export default function LogsPage() {
             <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 p-12 text-center min-h-[300px]">
               <ServerCrash className="mx-auto h-12 w-12 text-muted-foreground" />
               <h3 className="mt-4 text-xl font-semibold text-foreground">No logs found</h3>
-              <p className="mt-2 mb-4 text-sm text-muted-foreground">
+              <div className="mt-2 mb-4 text-sm text-muted-foreground">
                 Once requests are made to your API endpoints, they will appear here.
-              </p>
+              </div>
             </div>
           ) : (
             <ScrollArea className="max-h-[calc(100vh-20rem)]">
@@ -290,13 +289,13 @@ export default function LogsPage() {
                                   {format(parseISO(selectedLog.timestamp), "MMM d, yyyy HH:mm:ss zzz")}
                                 </DialogDescription>
                               </DialogHeader>
-                              <ScrollArea className="max-h-[70vh] pr-6">
+                              <ScrollArea className="max-h-[85vh] pr-6">
                                 <div className="space-y-6 py-4">
                                   <Card>
                                     <CardHeader><CardTitle className="text-lg">Incoming Request</CardTitle></CardHeader>
                                     <CardContent className="space-y-3 text-sm">
-                                      <p><strong>IP:</strong> {selectedLog.incomingRequest.ip || "N/A"}</p>
-                                      <p><strong>Method:</strong> {selectedLog.incomingRequest.method}</p>
+                                      <div><strong>IP:</strong> {selectedLog.incomingRequest.ip || "N/A"}</div>
+                                      <div><strong>Method:</strong> {selectedLog.incomingRequest.method}</div>
                                       <div>
                                         <strong>Headers:</strong>
                                         <SyntaxHighlighter language="json" style={atomDark} customStyle={{ maxHeight: '200px', overflowY: 'auto', fontSize: '0.8rem' }} className="rounded-md">
@@ -315,23 +314,24 @@ export default function LogsPage() {
                                   <Card>
                                     <CardHeader><CardTitle className="text-lg">Processing Summary</CardTitle></CardHeader>
                                     <CardContent className="space-y-1 text-sm">
-                                       <p><strong>Overall Status:</strong> 
-                                        <Badge 
-                                            variant={getStatusBadgeVariant(selectedLog.processingSummary.overallStatus)}
-                                            className={`ml-2 ${selectedLog.processingSummary.overallStatus === 'success' ? 'bg-green-500 hover:bg-green-600 text-white' : 
-                                                       selectedLog.processingSummary.overallStatus === 'partial_failure' ? 'bg-yellow-400 hover:bg-yellow-500 text-black' : ''}`}
-                                        >
-                                            {selectedLog.processingSummary.overallStatus.replace(/_/g, ' ').toUpperCase()}
-                                        </Badge>
-                                       </p>
-                                      <p><strong>Message:</strong> {selectedLog.processingSummary.message}</p>
+                                       <div className="flex items-center">
+                                         <strong>Overall Status:</strong> 
+                                         <Badge 
+                                             variant={getStatusBadgeVariant(selectedLog.processingSummary.overallStatus)}
+                                             className={`ml-2 ${selectedLog.processingSummary.overallStatus === 'success' ? 'bg-green-500 hover:bg-green-600 text-white' : 
+                                                        selectedLog.processingSummary.overallStatus === 'partial_failure' ? 'bg-yellow-400 hover:bg-yellow-500 text-black' : ''}`}
+                                         >
+                                             {selectedLog.processingSummary.overallStatus.replace(/_/g, ' ').toUpperCase()}
+                                         </Badge>
+                                       </div>
+                                      <div><strong>Message:</strong> {selectedLog.processingSummary.message}</div>
                                     </CardContent>
                                   </Card>
 
                                   <Card>
                                     <CardHeader><CardTitle className="text-lg">Integration Attempts ({selectedLog.integrations.length})</CardTitle></CardHeader>
                                     <CardContent className="space-y-4">
-                                      {selectedLog.integrations.length === 0 ? <p className="text-sm text-muted-foreground">No integrations were attempted.</p> : null}
+                                      {selectedLog.integrations.length === 0 ? <div className="text-sm text-muted-foreground">No integrations were attempted.</div> : null}
                                       {selectedLog.integrations.map((attempt, idx) => (
                                         <Card key={idx} className="bg-muted/30">
                                           <CardHeader className="pb-2 pt-4">
@@ -344,34 +344,48 @@ export default function LogsPage() {
                                             </CardTitle>
                                           </CardHeader>
                                           <CardContent className="text-xs space-y-2">
-                                            <p><strong>Target Format:</strong> {attempt.targetFormat.toUpperCase()}</p>
-                                            <p><strong>Webhook URL:</strong> <span className="truncate">{attempt.webhookUrl}</span></p>
-                                            {attempt.errorDetails && <p><strong>Error:</strong> {attempt.errorDetails}</p>}
+                                            <div><strong>Target Format:</strong> {attempt.targetFormat.toUpperCase()}</div>
+                                            <div><strong>Webhook URL:</strong> <span className="truncate">{attempt.webhookUrl}</span></div>
+                                            {attempt.errorDetails && <div><strong>Error:</strong> {attempt.errorDetails}</div>}
                                             {attempt.outgoingPayload && (
                                                <div>
                                                 <strong>Outgoing Payload:</strong>
-                                                <SyntaxHighlighter 
-                                                  language={attempt.targetFormat === 'xml' ? 'xml' : 'json'} 
-                                                  style={atomDark} 
-                                                  customStyle={{ maxHeight: '150px', overflowY: 'auto', fontSize: '0.75rem' }}
-                                                  className="rounded-md"
-                                                >
-                                                  {attempt.outgoingPayload}
-                                                </SyntaxHighlighter>
+                                                <div className="mt-2">
+                                                  <SyntaxHighlighter 
+                                                    language={attempt.targetFormat === 'xml' ? 'xml' : 'json'} 
+                                                    style={atomDark} 
+                                                    customStyle={{ 
+                                                      fontSize: '0.75rem',
+                                                      margin: 0,
+                                                      maxHeight: 'none'
+                                                    }}
+                                                    className="rounded-md"
+                                                    showLineNumbers={true}
+                                                  >
+                                                    {attempt.outgoingPayload}
+                                                  </SyntaxHighlighter>
+                                                </div>
                                                </div>
                                             )}
-                                            {attempt.responseStatus !== undefined && <p><strong>Response Status:</strong> {attempt.responseStatus}</p>}
+                                            {attempt.responseStatus !== undefined && <div><strong>Response Status:</strong> {attempt.responseStatus}</div>}
                                             {attempt.responseBody && (
                                                <div>
                                                 <strong>Response Body:</strong>
-                                                 <SyntaxHighlighter 
-                                                  language="text" 
-                                                  style={atomDark} 
-                                                  customStyle={{ maxHeight: '100px', overflowY: 'auto', fontSize: '0.75rem' }}
-                                                  className="rounded-md"
-                                                >
-                                                  {attempt.responseBody}
-                                                </SyntaxHighlighter>
+                                                <div className="mt-2">
+                                                  <SyntaxHighlighter 
+                                                    language="text" 
+                                                    style={atomDark} 
+                                                    customStyle={{ 
+                                                      fontSize: '0.75rem',
+                                                      margin: 0,
+                                                      maxHeight: 'none'
+                                                    }}
+                                                    className="rounded-md"
+                                                    showLineNumbers={true}
+                                                  >
+                                                    {attempt.responseBody}
+                                                  </SyntaxHighlighter>
+                                                </div>
                                                </div>
                                             )}
                                           </CardContent>

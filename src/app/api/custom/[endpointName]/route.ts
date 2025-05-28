@@ -17,7 +17,161 @@ function getClientIP(request: NextRequest): string | null {
   return realIP || remoteAddr || null;
 }
 
+/**
+ * Creates an Adaptive Card for Microsoft Teams
+ * @param title - The title of the card
+ * @param content - Content with platform-specific formatting
+ * @param parsedXml - The original parsed XML object (for additional data)
+ * @returns - A properly formatted Teams Adaptive Card object
+ */
+function createTeamsAdaptiveCard(title: string, content: string, parsedXml: any): any {
+  // Extract alert level/severity if available to set card color
+  let cardThemeColor = "0076D7"; // Default blue
+  let severityText = "";
+  
+  // Try to determine severity from parsed XML
+  if (parsedXml) {
+    // Check common fields for severity information
+    const severity = 
+      (parsedXml.severity || 
+      parsedXml.Severity || 
+      parsedXml.QualitativeNewState || 
+      parsedXml.QualitativeNewStatus || 
+      "").toString().toLowerCase();
+    
+    if (severity.includes("critical") || severity.includes("error") || severity.includes("failed")) {
+      cardThemeColor = "C4314B"; // Red
+      severityText = "CRITICAL";
+    } else if (severity.includes("warn")) {
+      cardThemeColor = "FFC300"; // Amber
+      severityText = "WARNING";
+    } else if (severity.includes("ok") || severity.includes("normal")) {
+      cardThemeColor = "92C353"; // Green
+      severityText = "NORMAL";
+    }
+  }
+
+  // Format the content as FactSet items
+  const factItems = content.split('\n')
+    .filter(line => line.trim() !== '')
+    .map(line => {
+      // Try to separate the line into title and value using the colon
+      const parts = line.split(/:\s*/);
+      if (parts.length >= 2) {
+        const title = parts[0].replace(/\*\*/g, ''); // Remove markdown ** if present
+        const value = parts.slice(1).join(': ');
+        return {
+          "type": "FactSet",
+          "facts": [
+            {
+              "title": title,
+              "value": value
+            }
+          ]
+        };
+      }
+      // If no colon, just return as text
+      return {
+        "type": "TextBlock",
+        "text": line,
+        "wrap": true
+      };
+    });
+    
+  // Add action buttons if there's a remote control link
+  let actions = [];
+  if (parsedXml && parsedXml.RemoteControlLink) {
+    actions.push({
+      "type": "Action.OpenUrl",
+      "title": "Remote Access",
+      "url": parsedXml.RemoteControlLink
+    });
+  }
+  
+  // Add acknowledge action button for critical and warning alerts
+  if (severityText === "CRITICAL" || severityText === "WARNING") {
+    actions.push({
+      "type": "Action.Submit",
+      "title": "Acknowledge",
+      "data": {
+        "actionType": "acknowledge",
+        "alertId": parsedXml.id || parsedXml.Id || "unknown"
+      }
+    });
+  }
+
+  // Create the adaptive card
+  return {
+    "type": "message",
+    "attachments": [
+      {
+        "contentType": "application/vnd.microsoft.card.adaptive",
+        "content": {
+          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+          "type": "AdaptiveCard",
+          "version": "1.2",
+          "msteams": {
+            "width": "Full"
+          },
+          "themeColor": cardThemeColor,
+          "body": [
+            {
+              "type": "Container",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": title,
+                  "size": "Large",
+                  "weight": "Bolder",
+                  "color": severityText ? (
+                    severityText === "CRITICAL" ? "Attention" : 
+                    severityText === "WARNING" ? "Warning" : 
+                    "Good"
+                  ) : "Default"
+                },
+                ...(severityText ? [{
+                  "type": "TextBlock",
+                  "text": severityText,
+                  "size": "Medium",
+                  "weight": "Bolder",
+                  "spacing": "Small",
+                  "color": severityText === "CRITICAL" ? "Attention" : 
+                          severityText === "WARNING" ? "Warning" : 
+                          "Good"
+                }] : []),
+                {
+                  "type": "Container",
+                  "spacing": "Medium",
+                  "items": factItems
+                }
+              ]
+            }
+          ],
+          ...(actions.length > 0 ? { "actions": actions } : {})
+        }
+      }
+    ]
+  };
+}
+
 function extractTextFromXml(obj: any, platform: string = 'generic'): string {
+  // Handle test notifications
+  if (obj && obj.TestNotification) {
+    // Format the test notification message based on platform
+    const testMessage = obj.Message;
+    
+    switch (platform) {
+      case 'teams':
+        return `## N-Central Test Notification\n\n**Message:** ${testMessage}`;
+      case 'slack':
+        return `:test_tube: *N-Central Test Notification*\n\n${testMessage}`;
+      case 'discord':
+        return `**N-Central Test Notification**\n${testMessage}`;
+      default:
+        return `N-Central Test Notification\n${testMessage}`;
+    }
+  }
+
   // Check if this is an N-central notification format
   if (obj && typeof obj === 'object') {
     // Priority fields for N-central notifications to create a meaningful message
@@ -418,8 +572,22 @@ export async function POST(
         console.log(`[${integration.name}] Processing XML payload for ${integration.platform} (${integration.targetFormat} format)`);
         console.log(`[${integration.name}] Raw XML payload:`, xmlPayload.substring(0, 500) + (xmlPayload.length > 500 ? '...' : ''));
         
-        const parsedXml = await xmlToJson(xmlPayload, { explicitArray: false, mergeAttrs: true, explicitRoot: false });
-        console.log(`[${integration.name}] Parsed XML object:`, JSON.stringify(parsedXml, null, 2));
+        // Check if this is a test notification from N-central
+        const isTestNotification = xmlPayload.trim().startsWith('THIS IS A TEST NOTIFICATION');
+        
+        let parsedXml;
+        if (isTestNotification) {
+          console.log(`[${integration.name}] Detected N-central test notification, processing as plain text`);
+          // Create a simple object structure for test notifications
+          parsedXml = { 
+            TestNotification: true,
+            Message: xmlPayload.trim()
+          };
+        } else {
+          // Normal XML processing
+          parsedXml = await xmlToJson(xmlPayload, { explicitArray: false, mergeAttrs: true, explicitRoot: false });
+        }
+        console.log(`[${integration.name}] Parsed object:`, JSON.stringify(parsedXml, null, 2));
         
         if (integration.targetFormat === 'text') {
           const extractedText = extractTextFromXml(parsedXml, integration.platform);
@@ -433,8 +601,12 @@ export async function POST(
             outgoingContentType = 'application/json';
             console.log(`[${integration.name}] Discord payload:`, payloadToSend);
           } else if (integration.platform === 'teams') {
-             payloadToSend = JSON.stringify({ text: extractedText });
-             outgoingContentType = 'application/json';
+            // Create adaptive card payload for Teams
+            const titleText = "N-Central Alert";
+            const adaptiveCard = createTeamsAdaptiveCard(titleText, extractedText, parsedXml);
+            payloadToSend = JSON.stringify(adaptiveCard);
+            outgoingContentType = 'application/json';
+            console.log(`[${integration.name}] Teams adaptive card payload:`, payloadToSend);
           } else { 
             payloadToSend = extractedText;
             outgoingContentType = 'text/plain';
@@ -448,6 +620,68 @@ export async function POST(
             // For Slack JSON format, use text field with code block
             const jsonContent = JSON.stringify(parsedXml, null, 2);
             payloadToSend = JSON.stringify({ text: `\`\`\`json\n${jsonContent}\n\`\`\`` });
+          } else if (integration.platform === 'teams') {
+            // For Teams, use adaptive card with JSON content
+            const jsonContent = JSON.stringify(parsedXml, null, 2);
+            // Extract a potential title from the data
+            const title = parsedXml.title || parsedXml.Title || parsedXml.message || parsedXml.Message || "JSON Notification";
+            
+            // Create a code block in the adaptive card for JSON data
+            const adaptiveCard = {
+              "type": "message",
+              "attachments": [
+                {
+                  "contentType": "application/vnd.microsoft.card.adaptive",
+                  "content": {
+                    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                    "type": "AdaptiveCard",
+                    "version": "1.2",
+                    "msteams": { "width": "Full" },
+                    "body": [
+                      {
+                        "type": "TextBlock",
+                        "text": typeof title === 'string' ? title : "JSON Notification",
+                        "size": "Large",
+                        "weight": "Bolder"
+                      },
+                      {
+                        "type": "TextBlock",
+                        "text": "Full JSON Data:",
+                        "size": "Medium",
+                        "weight": "Bolder",
+                        "spacing": "Medium"
+                      },
+                      {
+                        "type": "TextBlock",
+                        "text": "```json\n" + jsonContent + "\n```",
+                        "wrap": true
+                      }
+                    ],
+                    "actions": [
+                      {
+                        "type": "Action.ShowCard",
+                        "title": "View Structured Data",
+                        "card": {
+                          "type": "AdaptiveCard",
+                          "body": [
+                            {
+                              "type": "FactSet",
+                              "facts": Object.entries(parsedXml)
+                                .filter(([key, value]) => typeof value !== 'object' && value !== null)
+                                .map(([key, value]) => ({
+                                  "title": key,
+                                  "value": String(value)
+                                }))
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            };
+            payloadToSend = JSON.stringify(adaptiveCard);
           } else {
             // For other platforms, send raw JSON
             payloadToSend = JSON.stringify(parsedXml, null, 2);

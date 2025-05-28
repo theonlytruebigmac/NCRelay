@@ -93,9 +93,9 @@ export function IntegrationForm({
       case 'teams':
         recommendedFormat = 'text';
         return [
-          { value: "text", label: "Plain Text (Recommended for this platform)" },
-          { value: "json", label: "JSON (For advanced formatting like Slack Blocks, Discord Embeds, Teams Cards)" },
-          { value: "xml", label: "XML (Passthrough - not typically used by this platform)" },
+          { value: "text", label: "Plain Text" },
+          { value: "json", label: "JSON (For Advanced Formatting)" },
+          { value: "xml", label: "XML Passthrough" },
         ];
       case 'generic_webhook':
       default:
