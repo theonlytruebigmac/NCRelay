@@ -8,6 +8,11 @@ export interface DashboardStats {
   relayedNotificationsCount: number;
   apiEndpointsCount: number;
   apiEndpointsRequestsCount: number;
+  // New outbound request metrics
+  outboundSuccessCount: number;
+  outboundFailureCount: number;
+  outboundSuccessRate: number; // Percentage (0-100)
+  totalOutboundAttempts: number;
 }
 
 export async function getDashboardStatsAction(): Promise<DashboardStats> {

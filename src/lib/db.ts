@@ -438,6 +438,10 @@ export async function getDashboardStats(): Promise<{
     relayedNotificationsCount: number;
     apiEndpointsCount: number;
     apiEndpointsRequestsCount: number;
+    outboundSuccessCount: number;
+    outboundFailureCount: number;
+    outboundSuccessRate: number;
+    totalOutboundAttempts: number;
 }> {
     const db = await getDB();
     const activeIntegrationsCountResult = db.prepare('SELECT COUNT(*) as count FROM integrations WHERE enabled = 1').get() as { count: number };
@@ -447,11 +451,38 @@ export async function getDashboardStats(): Promise<{
     // Get count of API endpoint requests (request_logs with non-null apiEndpointId)
     const apiEndpointsRequestsCountResult = db.prepare('SELECT COUNT(*) as count FROM request_logs WHERE apiEndpointId IS NOT NULL').get() as { count: number };
     
+    // Calculate outbound request metrics by analyzing integration attempts in logs
+    const logs = await getRequestLogs(); // Get recent logs (last 50)
+    
+    let totalOutboundAttempts = 0;
+    let outboundSuccessCount = 0;
+    let outboundFailureCount = 0;
+    
+    logs.forEach(log => {
+        log.integrations.forEach(attempt => {
+            totalOutboundAttempts++;
+            if (attempt.status === 'success') {
+                outboundSuccessCount++;
+            } else if (attempt.status === 'failed_transformation' || attempt.status === 'failed_relay') {
+                outboundFailureCount++;
+            }
+            // Note: skipped attempts (disabled/no_association) are not counted as failures
+        });
+    });
+    
+    const outboundSuccessRate = totalOutboundAttempts > 0 
+        ? Math.round((outboundSuccessCount / totalOutboundAttempts) * 100) 
+        : 0;
+    
     return {
         activeIntegrationsCount: activeIntegrationsCountResult.count,
         relayedNotificationsCount: totalLogsCountResult.count,
         apiEndpointsCount: apiEndpointsCountResult.count,
         apiEndpointsRequestsCount: apiEndpointsRequestsCountResult.count,
+        outboundSuccessCount,
+        outboundFailureCount,
+        outboundSuccessRate,
+        totalOutboundAttempts,
     };
 }
 
