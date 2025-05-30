@@ -73,7 +73,7 @@ export default function FilterListPage() {
   
   return (
     <PageShell
-      title="Field Filters"
+      title="Field Filters Configuration"
       description="Manage which fields are included in notifications"
       actions={
         <Button asChild>

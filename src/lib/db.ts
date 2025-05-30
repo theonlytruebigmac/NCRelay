@@ -644,3 +644,39 @@ export async function deleteFieldFilter(id: string): Promise<boolean> {
 
   return result.changes > 0;
 }
+
+/**
+ * Get a request log by ID
+ */
+export async function getRequestLogById(logId: string): Promise<LogEntry | null> {
+  const db = await getDB();
+  const stmt = db.prepare('SELECT * FROM request_logs WHERE id = ?');
+  const row = stmt.get(logId) as any;
+
+  if (!row) {
+    return null;
+  }
+
+  const decryptedHeaders = await decrypt(row.incomingRequestHeaders);
+  const decryptedIntegrations = await decrypt(row.integrationAttempts);
+  const decryptedBodyRaw = await decrypt(row.incomingRequestBodyRaw);
+  
+  return {
+    id: row.id,
+    timestamp: row.timestamp,
+    apiEndpointId: row.apiEndpointId,
+    apiEndpointName: row.apiEndpointName,
+    apiEndpointPath: row.apiEndpointPath,
+    incomingRequest: {
+      ip: row.incomingRequestIp,
+      method: row.incomingRequestMethod,
+      headers: JSON.parse(decryptedHeaders || '{}'),
+      bodyRaw: decryptedBodyRaw,
+    },
+    processingSummary: {
+      overallStatus: row.processingOverallStatus,
+      message: row.processingMessage,
+    },
+    integrations: JSON.parse(decryptedIntegrations || '[]'),
+  };
+}

@@ -24,14 +24,14 @@ export const siteConfig = {
       icon: Rss,
     },
     {
+      title: "Endpoints",
+      href: "/dashboard/settings/api", 
+      icon: Waypoints, 
+    },
+    {
       title: "Field Filters",
       href: "/dashboard/filters",
       icon: Filter,
-    },
-    {
-      title: "API Endpoints",
-      href: "/dashboard/settings/api", 
-      icon: Waypoints, 
     },
     {
       title: "Security",
@@ -39,7 +39,7 @@ export const siteConfig = {
       icon: ShieldCheck,
     },
     {
-      title: "Request Logs",
+      title: "Logging",
       href: "/dashboard/logs",
       icon: History,
     }

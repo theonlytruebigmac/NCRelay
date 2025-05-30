@@ -163,7 +163,7 @@ export default function IntegrationsPage() {
 
   return (
     <PageShell
-      title="Integrations"
+      title="Integrations Configuration"
       description="Manage your connections to messaging platforms."
       actions={
         <Button asChild className="bg-primary hover:bg-primary/90">

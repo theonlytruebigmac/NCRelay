@@ -205,25 +205,13 @@ export default function ApiEndpointsPage() {
 
   return (
     <PageShell
-      title="API Endpoints Configuration"
-      description="Define custom API endpoints for receiving notifications."
+      title="Endpoints Configuration"
+      description="Define custom endpoints for receiving notifications."
     >
-      <Alert className="mb-6 shadow">
-        <Info className="h-5 w-5" />
-        <AlertTitle>How Custom API Endpoints Work</AlertTitle>
-        <AlertDescription>
-          <ul className="list-disc pl-5 space-y-1 mt-1">
-            <li>Create unique URLs (e.g., <code>{origin}/api/custom/your-path</code>) to receive data.</li>
-            <li>Each endpoint can be configured to trigger specific integrations.</li>
-            <li>All endpoints are public.</li>
-          </ul>
-        </AlertDescription>
-      </Alert>
-
       <Card className="shadow-lg mb-6">
         <CardHeader className="flex flex-row items-start sm:items-center justify-between">
           <div>
-            <CardTitle className="flex items-center"><Waypoints className="mr-2 h-5 w-5 text-primary"/>Custom API Endpoints</CardTitle>
+            <CardTitle className="flex items-center"><Waypoints className="mr-2 h-5 w-5 text-primary"/>Endpoints</CardTitle>
             <CardDescription>
               Define and manage your incoming notification endpoints.
             </CardDescription>
@@ -400,7 +388,7 @@ export default function ApiEndpointsPage() {
 
        <Card className="mt-6 shadow-lg">
         <CardHeader>
-          <CardTitle>Testing Your Custom Endpoints</CardTitle>
+          <CardTitle>Testing Your Endpoints</CardTitle>
           <CardDescription>
             Use a tool like cURL or Postman to test your configured API endpoints.
           </CardDescription>
