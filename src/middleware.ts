@@ -38,12 +38,35 @@ function getSecuritySettings(): SecuritySettings {
 }
 
 export async function middleware(request: NextRequest) {
-  // Only apply rate limiting to API routes
-  if (!request.nextUrl.pathname.startsWith('/api')) {
+  // Handle filter routes
+  if (request.nextUrl.pathname.startsWith('/dashboard/filters/')) {
+    // Extract the path segment
+    const pathSegments = request.nextUrl.pathname.split('/');
+    const id = pathSegments[pathSegments.length - 1];
+
+    // Special case: handle /add and redirect to /create
+    if (id === 'add') {
+      const url = request.nextUrl.clone();
+      pathSegments[pathSegments.length - 1] = 'create';
+      url.pathname = pathSegments.join('/');
+      return NextResponse.redirect(url);
+    }
+
+    // Only validate UUID format for detail/edit pages
+    if (id !== 'create' && !pathSegments.includes('create')) {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(id)) {
+        return NextResponse.redirect(new URL('/dashboard/filters', request.url));
+      }
+    }
+
     return NextResponse.next();
   }
-  
-  // Skip authentication routes to avoid circular dependencies
+
+  if (request.nextUrl.pathname.startsWith('/api')) {
+    // Handle API routes rate limiting
+    
+    // Skip authentication routes to avoid circular dependencies
   if (request.nextUrl.pathname.startsWith('/api/auth')) {
     return NextResponse.next();
   }
@@ -115,19 +138,18 @@ export async function middleware(request: NextRequest) {
   response.headers.set('X-RateLimit-Remaining', Math.max(0, settings.rateLimitMaxRequests - currentCount).toString());
   response.headers.set('X-RateLimit-Reset', Math.floor(resetTime / 1000).toString());
   
-  return response;
+    return response;
+  } // End of /api handling
+
+  return NextResponse.next();
 }
 
 export const config = {
-  // Apply middleware to all routes except static assets and certain paths
+  // Apply middleware to API routes and filter routes
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api/auth (authentication routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api/auth|_next/static|_next/image|favicon.ico).*)',
+    // API routes (except auth)
+    '/api/((?!auth).*)',
+    // Filter routes
+    '/dashboard/filters/:path*'
   ]
 };

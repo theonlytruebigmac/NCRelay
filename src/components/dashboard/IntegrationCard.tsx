@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { platformIcons, platformNames } from "@/lib/platform-helpers";
+import { platformIcons, platformNames, getPlatformFormatDescription } from "@/lib/platform-helpers";
 import { Edit, Trash2, Copy, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -52,8 +52,8 @@ export function IntegrationCard({ integration, onToggleEnabled, onEdit, onDelete
           </div>
         </div>
         <div>
-          <h4 className="text-sm font-medium text-muted-foreground">Target Format</h4>
-          <p className="text-sm text-foreground uppercase">{integration.targetFormat}</p>
+          <h4 className="text-sm font-medium text-muted-foreground">Format</h4>
+          <p className="text-sm text-foreground">{getPlatformFormatDescription(integration.platform)}</p>
         </div>
       </CardContent>
       <CardFooter className="flex items-center justify-between border-t pt-4">

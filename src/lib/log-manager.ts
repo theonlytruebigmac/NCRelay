@@ -10,7 +10,7 @@ const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/app.db' : path.jo
 let db: Database.Database | null = null;
 
 // Get a database connection
-function getDb(): Database.Database {
+function getDB(): Database.Database {
   if (!db) {
     db = new Database(DB_PATH);
   }
@@ -22,7 +22,7 @@ function getDb(): Database.Database {
  */
 export async function getSecuritySettings(): Promise<SecuritySettings> {
   try {
-    const dbInstance = getDb();
+    const dbInstance = getDB();
     const settings = dbInstance.prepare(`
       SELECT * FROM security_settings WHERE id = ?
     `).get('default_security_settings') as any;
@@ -77,7 +77,7 @@ export async function cleanupOldLogs(): Promise<{ removed: number, error?: strin
   try {
     const settings = await getSecuritySettings();
     const retentionDays = settings.logRetentionDays;
-    const dbInstance = getDb();
+    const dbInstance = getDB();
     
     // Calculate the cutoff date
     const now = new Date();
@@ -107,7 +107,7 @@ export async function cleanupOldLogs(): Promise<{ removed: number, error?: strin
  */
 export async function getLogStats(): Promise<{ count: number, oldestLog: string, newestLog: string }> {
   try {
-    const dbInstance = getDb();
+    const dbInstance = getDB();
     const countResult = dbInstance.prepare('SELECT COUNT(*) as count FROM logs').get() as { count: number };
     const oldestResult = dbInstance.prepare('SELECT timestamp FROM logs ORDER BY timestamp ASC LIMIT 1').get() as { timestamp: string } | undefined;
     const newestResult = dbInstance.prepare('SELECT timestamp FROM logs ORDER BY timestamp DESC LIMIT 1').get() as { timestamp: string } | undefined;
@@ -132,7 +132,7 @@ export async function getLogStats(): Promise<{ count: number, oldestLog: string,
  */
 export async function createBackup(): Promise<{ success: boolean, path?: string, error?: string }> {
   try {
-    const dbInstance = getDb();
+    const dbInstance = getDB();
     const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/app.db' : path.join(process.cwd(), 'app.db');
     const backupDir = process.env.NODE_ENV === 'production' ? '/data/backups' : path.join(process.cwd(), 'backups');
     

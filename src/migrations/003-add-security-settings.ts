@@ -47,5 +47,8 @@ export default {
         0 // enableDetailedErrorLogs = false
       );
     }
+  },
+  down: (db: Database.Database): void => {
+    db.exec(`DROP TABLE IF EXISTS security_settings;`);
   }
 };

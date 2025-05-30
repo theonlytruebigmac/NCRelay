@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,18 +22,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Integration, Platform } from "@/lib/types";
-import { platformOptions } from "@/lib/platform-helpers";
+import type { Integration, Platform, FieldFilterConfig } from "@/lib/types";
+import { platformOptions, getPlatformFormatDescription } from "@/lib/platform-helpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { useMemo, useEffect } from "react"; // Added useEffect
+import { useMemo, useEffect } from "react";
 
 const integrationSchema = z.object({
   name: z.string().min(3, { message: "Name must be at least 3 characters." }).max(50),
   platform: z.enum(['slack', 'discord', 'teams', 'generic_webhook']),
   webhookUrl: z.string().url({ message: "Invalid webhook URL." }),
   enabled: z.boolean().default(true),
-  targetFormat: z.enum(['json', 'xml', 'text']).default('json'),
+  fieldFilterId: z.union([
+    z.literal('none'),  // For "No filter" selection
+    z.string().min(1)   // For actual filter IDs
+  ]).optional(),
 });
 
 export type IntegrationFormValues = z.infer<typeof integrationSchema>;
@@ -44,6 +46,7 @@ interface IntegrationFormProps {
   onSubmit: (data: IntegrationFormValues) => Promise<void>; // Raw handler that receives form data
   isSubmitting?: boolean;
   submitButtonText?: string;
+  fieldFilters?: FieldFilterConfig[];
   formInstance?: UseFormReturn<IntegrationFormValues>; // Prop to receive form instance
 }
 
@@ -56,7 +59,8 @@ export function IntegrationForm({
   onSubmit,
   isSubmitting = false,
   submitButtonText = "Save Integration",
-  formInstance // Receive the form instance from parent
+  formInstance, // Receive the form instance from parent
+  fieldFilters = [] // Default to empty array if not provided
 }: IntegrationFormProps) {
   // If formInstance is provided, use it; otherwise, create a local one.
   // This allows the parent to control the form if needed for setError, etc.
@@ -67,7 +71,7 @@ export function IntegrationForm({
       platform: initialData?.platform || 'generic_webhook',
       webhookUrl: initialData?.webhookUrl || "",
       enabled: initialData?.enabled ?? true,
-      targetFormat: initialData?.targetFormat || 'json',
+      fieldFilterId: initialData?.fieldFilterId || 'none',
     },
   });
 
@@ -82,48 +86,7 @@ export function IntegrationForm({
     }
   }, [initialData, formInstance]);
 
-
   const selectedPlatform = form.watch('platform');
-
-  const targetFormatOptions = useMemo(() => {
-    let recommendedFormat = 'json'; // Default recommendation
-    switch (selectedPlatform) {
-      case 'slack':
-      case 'discord':
-      case 'teams':
-        recommendedFormat = 'text';
-        return [
-          { value: "text", label: "Plain Text" },
-          { value: "json", label: "JSON (For Advanced Formatting)" },
-          { value: "xml", label: "XML Passthrough" },
-        ];
-      case 'generic_webhook':
-      default:
-        return [
-          { value: "json", label: "JSON (Recommended for generic webhooks)" },
-          { value: "xml", label: "XML (Passthrough)" },
-          { value: "text", label: "Plain Text (Basic content extraction)" },
-        ];
-    }
-  }, [selectedPlatform]);
-
-  // Effect to update targetFormat when platform changes, if the current one isn't ideal
-  useEffect(() => {
-    const currentTargetFormat = form.getValues('targetFormat');
-    let idealFormat: 'json' | 'xml' | 'text' = 'json';
-    if (selectedPlatform === 'slack' || selectedPlatform === 'discord' || selectedPlatform === 'teams') {
-      idealFormat = 'text';
-    }
-    // Only change if the current format is not one of the specific recommendations for these platforms
-    if ((selectedPlatform === 'slack' || selectedPlatform === 'discord' || selectedPlatform === 'teams') && currentTargetFormat === 'xml') {
-      form.setValue('targetFormat', idealFormat, { shouldValidate: true });
-    } else if (selectedPlatform === 'generic_webhook' && currentTargetFormat !== 'json' && currentTargetFormat !== 'xml' && currentTargetFormat !== 'text' ) {
-      // If it's generic and somehow an invalid format was set
-      form.setValue('targetFormat', 'json', { shouldValidate: true });
-    }
-
-  }, [selectedPlatform, form]);
-
 
   return (
     <Card className="shadow-lg">
@@ -204,28 +167,43 @@ export function IntegrationForm({
                  <CardTitle className="text-lg">Payload Configuration</CardTitle>
               </CardHeader>
               <CardContent className="p-0 space-y-6">
+                {/* Format info display */}
+                <div className="rounded-md border border-muted bg-muted/20 p-3">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Output Format</h4>
+                  <p className="text-sm text-foreground">
+                    {getPlatformFormatDescription(selectedPlatform)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Format is automatically determined by the selected platform
+                  </p>
+                </div>
+
                 <FormField
                   control={form.control}
-                  name="targetFormat"
+                  name="fieldFilterId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Target Format</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <FormLabel>Field Filter (Recommended)</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value || 'none'} // Use 'none' as default value
+                      >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select target format" />
+                            <SelectValue placeholder="Select a field filter (optional)" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {targetFormatOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
+                          <SelectItem value="none">No filter (include all fields)</SelectItem>
+                          {fieldFilters.map((filter) => (
+                            <SelectItem key={filter.id} value={filter.id}>
+                              {filter.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormDescription>
-                        The format NCRelay will send to the webhook. Basic server-side transformations will be applied.
+                      <FormDescription className="flex items-center justify-between">
+                        <span>Choose which fields from N-central XML notifications to include</span>
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

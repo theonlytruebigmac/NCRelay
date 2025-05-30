@@ -83,5 +83,16 @@ export default {
         appBaseUrl TEXT NOT NULL
       );
     `);
+  },
+  down: (db: Database.Database): void => {
+    // Drop all tables in reverse order
+    db.exec(`
+      DROP TABLE IF EXISTS smtp_settings;
+      DROP TABLE IF EXISTS request_logs;
+      DROP TABLE IF EXISTS api_endpoints;
+      DROP TABLE IF EXISTS integrations;
+      DROP TABLE IF EXISTS password_reset_tokens;
+      DROP TABLE IF EXISTS users;
+    `);
   }
 };

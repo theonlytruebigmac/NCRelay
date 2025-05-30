@@ -7,6 +7,10 @@ import fs from 'fs';
 import migration001 from './001-initial-schema';
 import migration002 from './002-add-description-to-endpoints';
 import migration003 from './003-add-security-settings';
+import migration004 from './004-add-grok-patterns';
+import { migration as migration005 } from './005-add-field-filters';
+import migration006 from './006-remove-grok-patterns';
+import migration007 from './007-remove-target-format';
 // Add new migration imports here...
 
 const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/app.db' : path.join(process.cwd(), 'app.db');
@@ -16,6 +20,7 @@ export interface Migration {
   id: number;
   name: string;
   up: (db: Database.Database) => void;
+  down: (db: Database.Database) => void;
 }
 
 // Create migrations table if it doesn't exist
@@ -48,18 +53,39 @@ function getAllMigrations(): Migration[] {
     {
       id: 1,
       name: migration001.name || 'initial-schema',
-      up: migration001.up
+      up: migration001.up,
+      down: migration001.down
     },
-    // Add new migrations here:
     {
       id: 2,
       name: migration002.name || 'add-description-to-endpoints',
-      up: migration002.up
+      up: migration002.up,
+      down: migration002.down
     },
     {
       id: 3,
       name: migration003.name || 'add-security-settings',
-      up: migration003.up
+      up: migration003.up,
+      down: migration003.down
+    },
+    {
+      id: 4,
+      name: migration004.name || 'add-grok-patterns',
+      up: migration004.up,
+      down: migration004.down
+    },
+    migration005,
+    {
+      id: 6,
+      name: migration006.name || 'remove-grok-patterns',
+      up: migration006.up,
+      down: migration006.down
+    },
+    {
+      id: 7,
+      name: migration007.name || 'remove-target-format',
+      up: migration007.up,
+      down: migration007.down
     },
   ];
   

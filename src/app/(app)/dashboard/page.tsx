@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -125,13 +124,32 @@ export default function DashboardPage() {
             <Lightbulb className="mr-2 h-6 w-6 text-yellow-400" />
             Quick Start Guide
           </CardTitle>
+          <CardDescription>
+            NCRelay is a powerful notification relay service that bridges your applications with popular messaging platforms.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm text-muted-foreground">
-          <p>1. Go to <Link href="/dashboard/integrations" className="text-primary hover:underline">Integrations</Link> to add or edit messaging platforms.</p>
-          <p>2. Go to <Link href="/dashboard/settings/api" className="text-primary hover:underline">API Endpoints</Link> to create custom API paths and link them to your integrations.</p>
-          <p>3. Use your configured custom API endpoint URL to send XML data to NCRelay.</p>
-          <p>4. Check the <Link href="/dashboard/logs" className="text-primary hover:underline">Logs</Link> page to see processed requests.</p>
-          <p>5. NCRelay will process and relay your notifications to the linked platforms!</p>
+        <CardContent className="space-y-4">
+          <div className="mb-4">
+            <h4 className="font-medium mb-2 text-foreground">Key Features:</h4>
+            <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+              <li>• <strong>Multi-Platform Support:</strong> Send notifications to Discord, Slack, Teams, and more</li>
+              <li>• <strong>Custom API Endpoints:</strong> Create personalized endpoints for your applications</li>
+              <li>• <strong>XML Processing:</strong> Automatically parse and format XML notification data</li>
+              <li>• <strong>Real-time Logging:</strong> Monitor all requests and responses in real-time</li>
+              <li>• <strong>Easy Integration:</strong> Simple REST API interface for seamless connectivity</li>
+            </ul>
+          </div>
+          
+          <div>
+            <h4 className="font-medium mb-2 text-foreground">Getting Started:</h4>
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p>1. Go to <Link href="/dashboard/integrations" className="text-primary hover:underline">Integrations</Link> to add or edit messaging platforms.</p>
+              <p>2. Go to <Link href="/dashboard/settings/api" className="text-primary hover:underline">API Endpoints</Link> to create custom API paths and link them to your integrations.</p>
+              <p>3. Use your configured custom API endpoint URL to send XML data to NCRelay.</p>
+              <p>4. Check the <Link href="/dashboard/logs" className="text-primary hover:underline">Logs</Link> page to see processed requests.</p>
+              <p>5. NCRelay will process and relay your notifications to the linked platforms!</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </PageShell>

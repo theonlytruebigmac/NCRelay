@@ -9,7 +9,7 @@ import { z } from "zod";
 import { SecuritySettings, User } from "@/lib/types";
 
 // Database helper function
-function getDb() {
+function getDB() {
   const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/app.db' : 'app.db';
   return new Database(DB_PATH);
 }
@@ -55,7 +55,7 @@ export async function getSecuritySettingsAction(): Promise<SecuritySettings> {
     throw new Error("Unauthorized access");
   }
 
-  const db = getDb();
+  const db = getDB();
 
   // Try to get existing settings
   const existingSettings = db.prepare(`
@@ -150,7 +150,7 @@ export async function updateSecuritySettingsAction(settings: Partial<SecuritySet
   }
 
   try {
-    const db = getDb();
+    const db = getDB();
     db.prepare(`
       UPDATE security_settings SET
         rateLimitMaxRequests = ?,

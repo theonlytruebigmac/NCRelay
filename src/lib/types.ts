@@ -1,4 +1,3 @@
-
 export type Platform = 'slack' | 'discord' | 'teams' | 'generic_webhook';
 
 export interface Integration {
@@ -7,7 +6,7 @@ export interface Integration {
   platform: Platform;
   webhookUrl: string;
   enabled: boolean;
-  targetFormat: 'json' | 'xml' | 'text';
+  fieldFilterId?: string; // New field to reference the field filter configuration
 }
 
 export interface User {
@@ -31,7 +30,6 @@ export interface LoggedIntegrationAttempt {
   integrationName: string;
   platform: Platform;
   status: 'success' | 'failed_transformation' | 'failed_relay' | 'skipped_disabled' | 'skipped_no_association';
-  targetFormat: 'json' | 'xml' | 'text';
   webhookUrl: string;
   errorDetails?: string;
   outgoingPayload?: string; 
@@ -79,4 +77,25 @@ export interface SmtpSettings {
   secure: boolean;
   fromEmail: string;
   appBaseUrl: string; // For constructing links in emails
+}
+
+// New interface for the field filter approach
+export interface FieldFilterConfig {
+  id: string;
+  name: string;
+  includedFields: string[]; // List of fields to include
+  excludedFields: string[]; // List of fields to explicitly exclude
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  sampleData?: string; // Sample data used to create this filter
+}
+
+export interface TemplateMapping {
+  id: string;
+  platform: Platform;
+  template: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
 }

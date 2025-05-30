@@ -17,5 +17,10 @@ export default {
     //   ALTER TABLE table_name
     //   ADD COLUMN new_column TEXT;
     // `);
+  },
+
+  // The down function that reverts the migration
+  down: (db: Database.Database): void => {
+    // Add your rollback SQL statements here
   }
 };

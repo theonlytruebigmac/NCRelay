@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { PageShell } from "@/components/layout/PageShell";
 import type { LogEntry, LoggedIntegrationAttempt } from "@/lib/types";
+import { getPlatformFormat, getPlatformFormatDescription } from "@/lib/platform-helpers";
 import {
   Table,
   TableBody,
@@ -11,9 +12,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, AlertCircle, CheckCircle, XCircle, HelpCircle, ServerCrash, Trash2, AlertTriangle } from "lucide-react";
+import { Eye, AlertCircle, CheckCircle, XCircle, HelpCircle, ServerCrash, Trash2, AlertTriangle, RefreshCw, Play, Pause } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import {
   Dialog,
@@ -43,6 +45,7 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Skeleton } from "@/components/ui/skeleton";
 import { getRequestLogsAction, deleteLogEntryAction, deleteAllLogEntriesAction } from "./actions"; // Updated import
 import { useToast } from "@/hooks/use-toast";
+import { usePolling } from "@/hooks/use-polling";
 
 const StatusIcon = ({ status }: { status: LogEntry['processingSummary']['overallStatus'] }) => {
   switch (status) {
@@ -80,24 +83,65 @@ export default function LogsPage() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    async function fetchLogs() {
+  const fetchLogs = async (showRefreshingIndicator = false) => {
+    if (showRefreshingIndicator) {
+      setIsRefreshing(true);
+    } else {
       setIsLoading(true);
-      try {
-        const fetchedLogs = await getRequestLogsAction();
-        // Sorting is handled by DB query (ORDER BY timestamp DESC)
-        setLogs(fetchedLogs);
-      } catch (error) {
-        console.error("Failed to load logs:", error);
-        // Optionally show a toast error
-      } finally {
-        setIsLoading(false);
-      }
     }
+    
+    try {
+      const fetchedLogs = await getRequestLogsAction();
+      // Sorting is handled by DB query (ORDER BY timestamp DESC)
+      setLogs(fetchedLogs);
+    } catch (error) {
+      console.error("Failed to load logs:", error);
+      // Only show toast error if it's not an auto-refresh (to avoid spam)
+      if (!showRefreshingIndicator) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load logs. Please try again.",
+        });
+      }
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
     fetchLogs();
   }, []);
+
+  // Auto-refresh polling
+  usePolling(
+    () => fetchLogs(true),
+    {
+      interval: 5000, // 5 seconds
+      enabled: autoRefreshEnabled,
+      immediate: false
+    }
+  );
+
+  const handleManualRefresh = () => {
+    fetchLogs(true);
+  };
+
+  const toggleAutoRefresh = () => {
+    setAutoRefreshEnabled(!autoRefreshEnabled);
+    toast({
+      title: autoRefreshEnabled ? "Auto-refresh disabled" : "Auto-refresh enabled",
+      description: autoRefreshEnabled 
+        ? "Logs will no longer refresh automatically" 
+        : "Logs will refresh every 5 seconds",
+    });
+  };
 
   const handleViewDetails = (log: LogEntry) => {
     setSelectedLog(log);
@@ -191,28 +235,63 @@ export default function LogsPage() {
   return (
     <PageShell
       title="Request Logs"
-      description="Inspect incoming requests and their relay status. (Last 50 entries)"
+      description={`Inspect recent incoming requests and their relay status. ${autoRefreshEnabled ? ' - Auto-refreshing every 5 seconds' : ''}`}
     >
       <Card className="shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <div>
-            <CardTitle>Request Logs</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Request Logs
+              {isRefreshing && (
+                <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+              )}
+            </CardTitle>
             <CardDescription>
               Recent webhook requests and their processing status
+              {autoRefreshEnabled && (
+                <span className="text-green-600 ml-1">(Auto-refreshing every 5s)</span>
+              )}
             </CardDescription>
           </div>
-          {logs.length > 0 && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="destructive" 
-                  size="sm"
-                  disabled={isDeletingAll}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {isDeletingAll ? "Deleting..." : "Delete All"}
-                </Button>
-              </AlertDialogTrigger>
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleAutoRefresh}
+            >
+              {autoRefreshEnabled ? (
+                <>
+                  <Pause className="mr-2 h-4 w-4" />
+                  Pause Auto-refresh
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 h-4 w-4" />
+                  Start Auto-refresh
+                </>
+              )}
+            </Button>
+            {logs.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    disabled={isDeletingAll}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    {isDeletingAll ? "Deleting..." : "Delete All"}
+                  </Button>
+                </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete All Log Entries</AlertDialogTitle>
@@ -232,6 +311,7 @@ export default function LogsPage() {
               </AlertDialogContent>
             </AlertDialog>
           )}
+          </div>
         </CardHeader>
         <CardContent className="pt-6">
           {logs.length === 0 ? (
@@ -282,20 +362,20 @@ export default function LogsPage() {
                               </Button>
                             </DialogTrigger>
                             {selectedLog && selectedLog.id === log.id && (
-                            <DialogContent className="max-w-3xl">
+                            <DialogContent className="max-w-4xl">
                               <DialogHeader>
-                                <DialogTitle>Log Details: {selectedLog.apiEndpointName || selectedLog.apiEndpointPath}</DialogTitle>
+                                <DialogTitle className="break-all">Log Details: {selectedLog.apiEndpointName || selectedLog.apiEndpointPath}</DialogTitle>
                                 <DialogDescription>
                                   {format(parseISO(selectedLog.timestamp), "MMM d, yyyy HH:mm:ss zzz")}
                                 </DialogDescription>
                               </DialogHeader>
-                              <ScrollArea className="max-h-[85vh] pr-6">
+                              <ScrollArea className="max-h-[80vh] pr-6 overflow-x-hidden">
                                 <div className="space-y-6 py-4">
                                   <Card>
                                     <CardHeader><CardTitle className="text-lg">Incoming Request</CardTitle></CardHeader>
                                     <CardContent className="space-y-3 text-sm">
-                                      <div><strong>IP:</strong> {selectedLog.incomingRequest.ip || "N/A"}</div>
-                                      <div><strong>Method:</strong> {selectedLog.incomingRequest.method}</div>
+                                      <div className="break-all"><strong>IP:</strong> {selectedLog.incomingRequest.ip || "N/A"}</div>
+                                      <div className="break-all"><strong>Method:</strong> {selectedLog.incomingRequest.method}</div>
                                       <div>
                                         <strong>Headers:</strong>
                                         <SyntaxHighlighter language="json" style={atomDark} customStyle={{ maxHeight: '200px', overflowY: 'auto', fontSize: '0.8rem' }} className="rounded-md">
@@ -314,17 +394,22 @@ export default function LogsPage() {
                                   <Card>
                                     <CardHeader><CardTitle className="text-lg">Processing Summary</CardTitle></CardHeader>
                                     <CardContent className="space-y-1 text-sm">
-                                       <div className="flex items-center">
+                                       <div className="flex flex-wrap items-center gap-2">
                                          <strong>Overall Status:</strong> 
                                          <Badge 
                                              variant={getStatusBadgeVariant(selectedLog.processingSummary.overallStatus)}
-                                             className={`ml-2 ${selectedLog.processingSummary.overallStatus === 'success' ? 'bg-green-500 hover:bg-green-600 text-white' : 
+                                             className={`${selectedLog.processingSummary.overallStatus === 'success' ? 'bg-green-500 hover:bg-green-600 text-white' : 
                                                         selectedLog.processingSummary.overallStatus === 'partial_failure' ? 'bg-yellow-400 hover:bg-yellow-500 text-black' : ''}`}
                                          >
                                              {selectedLog.processingSummary.overallStatus.replace(/_/g, ' ').toUpperCase()}
                                          </Badge>
                                        </div>
-                                      <div><strong>Message:</strong> {selectedLog.processingSummary.message}</div>
+                                      <div>
+                                        <strong>Message:</strong> 
+                                        <div className="break-words mt-1 border border-muted-foreground/20 bg-muted/30 p-2 rounded-md overflow-auto max-w-full">
+                                          <span className="text-sm">{selectedLog.processingSummary.message}</span>
+                                        </div>
+                                      </div>
                                     </CardContent>
                                   </Card>
 
@@ -335,24 +420,41 @@ export default function LogsPage() {
                                       {selectedLog.integrations.map((attempt, idx) => (
                                         <Card key={idx} className="bg-muted/30">
                                           <CardHeader className="pb-2 pt-4">
-                                            <CardTitle className="text-base flex items-center">
-                                              <IntegrationStatusIcon status={attempt.status}/>
-                                              <span className="ml-2">{attempt.integrationName} ({attempt.platform})</span>
-                                              <Badge variant={getIntegrationStatusBadgeVariant(attempt.status)} className={`ml-auto text-xs ${attempt.status === 'success' ? 'bg-green-500 hover:bg-green-600 text-white' : ''}`}>
+                                            <div className="w-full flex flex-wrap items-start justify-between">
+                                              <div className="flex items-center gap-2 mb-1">
+                                                <IntegrationStatusIcon status={attempt.status}/>
+                                                <span className="break-all font-medium">{attempt.integrationName} ({attempt.platform})</span>
+                                              </div>
+                                              <Badge variant={getIntegrationStatusBadgeVariant(attempt.status)} className={`text-xs ${attempt.status === 'success' ? 'bg-green-500 hover:bg-green-600 text-white' : ''}`}>
                                                 {attempt.status.replace(/_/g, ' ').toUpperCase()}
                                               </Badge>
-                                            </CardTitle>
+                                            </div>
                                           </CardHeader>
                                           <CardContent className="text-xs space-y-2">
-                                            <div><strong>Target Format:</strong> {attempt.targetFormat.toUpperCase()}</div>
-                                            <div><strong>Webhook URL:</strong> <span className="truncate">{attempt.webhookUrl}</span></div>
-                                            {attempt.errorDetails && <div><strong>Error:</strong> {attempt.errorDetails}</div>}
+                                            <div>
+                                              <strong>Format:</strong> 
+                                              <span className="ml-2 px-2 py-1 bg-muted rounded-md">{getPlatformFormatDescription(attempt.platform)}</span>
+                                            </div>
+                                            <div>
+                                              <strong>Webhook URL:</strong> 
+                                              <div className="break-all mt-1 border border-muted-foreground/20 bg-muted/30 p-2 rounded-md overflow-auto max-w-full">
+                                                <code className="text-[0.7rem] text-white">{attempt.webhookUrl}</code>
+                                              </div>
+                                            </div>
+                                            {attempt.errorDetails && (
+                                              <div>
+                                                <strong>Error:</strong> 
+                                                <div className="mt-1 border border-red-300/20 bg-red-900/10 p-2 rounded-md overflow-auto max-w-full">
+                                                  <span className="break-words text-red-400">{attempt.errorDetails}</span>
+                                                </div>
+                                              </div>
+                                            )}
                                             {attempt.outgoingPayload && (
                                                <div>
                                                 <strong>Outgoing Payload:</strong>
                                                 <div className="mt-2">
                                                   <SyntaxHighlighter 
-                                                    language={attempt.targetFormat === 'xml' ? 'xml' : 'json'} 
+                                                    language={getPlatformFormat(attempt.platform) === 'json' ? 'json' : 'xml'} 
                                                     style={atomDark} 
                                                     customStyle={{ 
                                                       fontSize: '0.75rem',
@@ -367,7 +469,12 @@ export default function LogsPage() {
                                                 </div>
                                                </div>
                                             )}
-                                            {attempt.responseStatus !== undefined && <div><strong>Response Status:</strong> {attempt.responseStatus}</div>}
+                                            {attempt.responseStatus !== undefined && (
+                                              <div>
+                                                <strong>Response Status:</strong> 
+                                                <span className="ml-2 px-2 py-1 bg-muted rounded-md">{attempt.responseStatus}</span>
+                                              </div>
+                                            )}
                                             {attempt.responseBody && (
                                                <div>
                                                 <strong>Response Body:</strong>
