@@ -14,7 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { SmtpSettingsForm } from "@/components/dashboard/settings/SmtpSettingsForm";
 import { getSmtpSettingsAction } from "./smtp/actions";
@@ -44,6 +43,7 @@ export default function GeneralSettingsPage() {
 
   useEffect(() => {
     fetchSmtpSettings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSmtpFormSubmit = () => {
@@ -59,7 +59,7 @@ export default function GeneralSettingsPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center"><Waypoints className="mr-2 h-5 w-5 text-primary" /> API Endpoints</CardTitle>
+            <CardTitle className="flex items-center"><Waypoints className="mr-2 h-5 w-5 text-primary" /> Endpoints</CardTitle>
             <CardDescription>Configure custom API endpoints for incoming notifications.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -100,6 +100,18 @@ export default function GeneralSettingsPage() {
 
         <Card className="shadow-lg">
           <CardHeader>
+            <CardTitle className="flex items-center"><ShieldCheck className="mr-2 h-5 w-5 text-primary" /> Security & Rate Limiting</CardTitle>
+            <CardDescription>Manage security, rate limiting, and logging settings.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/dashboard/settings/security" passHref>
+              <Button>Manage Security Settings</Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
             <CardTitle className="flex items-center"><Bell className="mr-2 h-5 w-5 text-primary" /> Notification Preferences</CardTitle>
             <CardDescription>Set your preferences for app notifications. (Placeholder)</CardDescription>
           </CardHeader>
@@ -115,16 +127,6 @@ export default function GeneralSettingsPage() {
           </CardHeader>
           <CardContent>
             <Button disabled>Customize (Coming Soon)</Button>
-          </CardContent>
-        </Card>
-        
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center"><ShieldCheck className="mr-2 h-5 w-5 text-primary" /> Security</CardTitle>
-            <CardDescription>Manage security settings for your account. (Placeholder)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button disabled>Manage Security (Coming Soon)</Button>
           </CardContent>
         </Card>
       </div>

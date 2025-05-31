@@ -1,5 +1,5 @@
 
-import { Cog, LayoutDashboard, Rss, Waypoints, History } from 'lucide-react';
+import { LayoutDashboard, Rss, Waypoints, History, ShieldCheck, Filter } from 'lucide-react';
 
 export type NavItem = {
   title: string;
@@ -24,12 +24,22 @@ export const siteConfig = {
       icon: Rss,
     },
     {
-      title: "API Endpoints",
+      title: "Endpoints",
       href: "/dashboard/settings/api", 
       icon: Waypoints, 
     },
     {
-      title: "Logs",
+      title: "Field Filters",
+      href: "/dashboard/filters",
+      icon: Filter,
+    },
+    {
+      title: "Security",
+      href: "/dashboard/settings/security",
+      icon: ShieldCheck,
+    },
+    {
+      title: "Logging",
       href: "/dashboard/logs",
       icon: History,
     }

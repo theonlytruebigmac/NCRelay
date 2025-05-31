@@ -7,8 +7,10 @@ NCRelay is a powerful notification relay service that receives XML data via cust
 ## 🚀 Features
 
 - **Custom API Endpoints**: Create custom API paths to receive XML notifications
+- **IP Address Whitelisting**: Restrict endpoint access to specific IP addresses for enhanced security
 - **Multi-Platform Support**: Integrate with Slack, Discord, Microsoft Teams, and generic webhooks
 - **Flexible Data Transformation**: Convert XML to JSON, plain text, or keep as XML
+- **Field Filtering**: Extract and filter specific fields from XML notifications
 - **Secure Authentication**: User management with bcrypt password hashing
 - **Comprehensive Logging**: Track all requests and relay attempts with detailed logs
 - **Intuitive Dashboard**: Clean, modern UI for managing integrations and monitoring
@@ -102,12 +104,29 @@ The database schema is automatically initialized on first run.
 
 ### Setting up API Endpoints
 
-1. Go to **Dashboard → API Endpoints**
+1. Go to **Dashboard → Settings → API Endpoints**
 2. Click **Add API Endpoint**
 3. Configure:
    - **Name**: Descriptive name
-   - **Path**: Custom path (e.g., "alerts", "notifications")
    - **Associated Integrations**: Select which integrations to trigger
+   - **IP Address Whitelist**: (Optional) Restrict access to specific IP addresses
+4. Use the generated secure UUID path for your endpoint
+
+### IP Address Whitelisting
+
+For enhanced security, you can restrict endpoint access to specific IP addresses:
+
+- **Leave empty**: Allow access from any IP address (default)
+- **Add specific IPs**: Only allow requests from specified IP addresses
+- **Supports IPv4 and IPv6**: e.g., `192.168.1.100`, `2001:db8::1`
+- **Localhost handling**: `127.0.0.1`, `::1`, and `localhost` are treated as equivalent
+
+**Example**: Restrict to local and specific server access:
+```
+127.0.0.1
+192.168.1.50
+10.0.0.100
+```
 
 ### Sending Notifications
 
@@ -115,7 +134,7 @@ Send XML data to your custom endpoint:
 
 ```bash
 curl -X POST \
-  http://localhost:9005/api/custom/your-endpoint-path \
+  http://localhost:9005/api/custom/your-secure-endpoint-uuid \
   -H "Content-Type: application/xml" \
   -d '<?xml version="1.0"?>
       <notification>
@@ -124,6 +143,8 @@ curl -X POST \
         <severity>high</severity>
       </notification>'
 ```
+
+**Note**: Each endpoint uses a secure, randomly generated UUID path to prevent enumeration attacks.
 
 ### Platform-Specific Examples
 
@@ -169,6 +190,8 @@ View detailed logs of all API requests:
 
 - **Password Hashing**: bcrypt with salt rounds
 - **Data Encryption**: Sensitive data encrypted at rest
+- **IP Address Whitelisting**: Restrict endpoint access to specific IP addresses
+- **Secure Endpoint Paths**: Random UUID paths prevent enumeration attacks
 - **Session Management**: Secure authentication system
 - **Input Validation**: XML parsing and validation
 - **Error Handling**: Detailed logging without exposing internals
@@ -208,7 +231,8 @@ npm run typecheck   # Run TypeScript checks
 #### Tables
 - **users**: User accounts and authentication
 - **integrations**: Messaging platform configurations
-- **api_endpoints**: Custom API endpoint definitions
+- **api_endpoints**: Custom API endpoint definitions with IP whitelist support
+- **field_filters**: Field extraction and filtering configurations
 - **request_logs**: API request and processing logs
 - **smtp_settings**: Email configuration
 - **password_reset_tokens**: Password reset functionality
@@ -260,13 +284,19 @@ For support and questions:
 
 ### Custom Endpoints
 
-**POST** `/api/custom/{endpointName}`
+**POST** `/api/custom/{endpointUUID}`
 - **Content-Type**: `application/xml` or `text/xml`
 - **Body**: Valid XML payload
+- **Security**: IP whitelist validation (if configured)
 - **Response**: Processing summary with integration results
 
-**GET** `/api/custom/{endpointName}`
+**GET** `/api/custom/{endpointUUID}`
 - **Response**: Endpoint information and status
+
+### Error Codes
+- **403 Forbidden**: IP address not in endpoint whitelist
+- **404 Not Found**: Endpoint UUID not found
+- **400 Bad Request**: Invalid XML payload or content type
 
 ### Legacy Endpoint (Deprecated)
 - `/api/notify` returns 410 Gone status

@@ -9,6 +9,7 @@ import type { ApiEndpointConfig } from '@/lib/types';
 const apiEndpointSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters.").max(50, "Name must be at most 50 characters."),
   associatedIntegrationIds: z.array(z.string()).default([]),
+  ipWhitelist: z.array(z.string().ip()).default([]).optional(),
 });
 
 export async function getApiEndpointsAction(): Promise<ApiEndpointConfig[]> {
@@ -28,10 +29,12 @@ export async function getIntegrationsForEndpointSelectionAction() {
 export async function addApiEndpointAction(formData: FormData) {
   const name = formData.get('name') as string;
   const associatedIntegrationIds = formData.getAll('associatedIntegrationIds[]') as string[];
+  const ipWhitelist = formData.getAll('ipWhitelist[]') as string[];
 
   const validatedFields = apiEndpointSchema.safeParse({
     name,
     associatedIntegrationIds,
+    ipWhitelist,
   });
 
   if (!validatedFields.success) {
@@ -51,10 +54,12 @@ export async function addApiEndpointAction(formData: FormData) {
 export async function updateApiEndpointAction(id: string, formData: FormData) {
   const name = formData.get('name') as string;
   const associatedIntegrationIds = formData.getAll('associatedIntegrationIds[]') as string[];
+  const ipWhitelist = formData.getAll('ipWhitelist[]') as string[];
 
   const validatedFields = apiEndpointSchema.safeParse({
     name,
     associatedIntegrationIds,
+    ipWhitelist,
   });
 
   if (!validatedFields.success) {

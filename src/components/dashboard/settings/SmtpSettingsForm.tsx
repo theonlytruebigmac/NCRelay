@@ -32,7 +32,6 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose
 } from "@/components/ui/dialog";
 
 // Define the schema locally as it's not exported from actions.ts anymore
@@ -42,7 +41,7 @@ const smtpSettingsSchema = z.object({
   user: z.string().min(1, "User cannot be empty."),
   password: z.string().optional(), // Password can be optional for some SMTP setups
   secure: z.boolean().default(false),
-  fromEmail: z.string().email("Invalid 'From Email' address."),
+  fromEmail: z.string().email("Invalid &apos;From Email&apos; address."),
   appBaseUrl: z.string().url("App Base URL must be a valid URL (e.g., http://localhost:9002 or https://yourdomain.com)."),
 });
 
@@ -86,7 +85,8 @@ export function SmtpSettingsForm({ initialData, onFormSubmit }: SmtpSettingsForm
       fromEmail: initialData?.fromEmail || "",
       appBaseUrl: initialData?.appBaseUrl || (typeof window !== 'undefined' ? window.location.origin : ""),
     });
-  }, [initialData, form]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData]);
 
   async function onSubmit(values: SmtpSettingsFormValues) {
     const formData = new FormData();
@@ -217,8 +217,7 @@ export function SmtpSettingsForm({ initialData, onFormSubmit }: SmtpSettingsForm
           render={({ field }) => (
             <FormItem>
               <FormLabel>SMTP Password</FormLabel>
-              <FormControl><Input type="password" placeholder="••••••••" {...field} value={field.value ?? ''} /></FormControl>
-              <FormDescription>Leave blank if your SMTP server doesn't require a password or if you don't want to change it.</FormDescription>
+              <FormControl><Input type="password" placeholder="••••••••" {...field} value={field.value ?? ''} /></FormControl>                      <FormDescription>Leave blank if your SMTP server doesn&apos;t require a password or if you don&apos;t want to change it.</FormDescription>
               <FormMessage />
             </FormItem>
           )}

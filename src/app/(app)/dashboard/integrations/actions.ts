@@ -1,18 +1,17 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import * as db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import type { Integration, Platform } from '@/lib/types';
+import type { Integration } from '@/lib/types';
 
 const integrationSchema = z.object({
   name: z.string().min(3, { message: "Name must be at least 3 characters." }).max(50),
   platform: z.enum(['slack', 'discord', 'teams', 'generic_webhook']),
   webhookUrl: z.string().url({ message: "Invalid webhook URL." }),
   enabled: z.boolean().default(true),
-  targetFormat: z.enum(['json', 'xml', 'text']).default('json'),
+  fieldFilterId: z.string().optional(),
 });
 
 export async function getIntegrationsAction(): Promise<Integration[]> {
@@ -34,12 +33,17 @@ export async function addIntegrationAction(formData: FormData) {
   // Convert 'enabled' from string 'on'/'off' or value to boolean
   const enabledValue = data.enabled === 'on' || data.enabled === 'true';
 
+  // Handle fieldFilterId - undefined if not present or 'none'
+  const fieldFilterId = data.fieldFilterId && data.fieldFilterId !== 'none'
+    ? data.fieldFilterId as string
+    : undefined;
+
   const validatedFields = integrationSchema.safeParse({
     name: data.name,
     platform: data.platform,
     webhookUrl: data.webhookUrl,
     enabled: enabledValue,
-    targetFormat: data.targetFormat,
+    fieldFilterId,
   });
 
   if (!validatedFields.success) {
@@ -70,12 +74,17 @@ export async function updateIntegrationAction(id: string, formData: FormData) {
   const data = Object.fromEntries(formData.entries());
   const enabledValue = data.enabled === 'on' || data.enabled === 'true';
   
+  // Handle fieldFilterId - undefined if not present or 'none'
+  const fieldFilterId = data.fieldFilterId && data.fieldFilterId !== 'none'
+    ? data.fieldFilterId as string
+    : undefined;
+  
   const validatedFields = integrationSchema.safeParse({
     name: data.name,
     platform: data.platform,
     webhookUrl: data.webhookUrl,
     enabled: enabledValue,
-    targetFormat: data.targetFormat,
+    fieldFilterId,
   });
 
   if (!validatedFields.success) {
@@ -140,4 +149,3 @@ export async function toggleIntegrationEnabledAction(id: string, enabled: boolea
   }
 }
 
-    

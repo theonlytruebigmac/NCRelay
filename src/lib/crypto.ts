@@ -104,8 +104,8 @@ export async function decrypt(encryptedText: string): Promise<string> {
     let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return decrypted;
-  } catch (error) {
-    // console.warn('Decryption failed. Data may be corrupted, a wrong key might be used, or it might be plaintext. Returning original text.', error);
+  } catch {
+    // console.warn('Decryption failed. Data may be corrupted, a wrong key might be used, or it might be plaintext. Returning original text.');
     return encryptedText; // Return original (likely still encrypted or corrupted) text on error
   }
 }

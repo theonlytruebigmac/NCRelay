@@ -1,3 +1,13 @@
+import { z } from 'zod';
+
+export const LoggingSettingsSchema = z.object({
+  logRetentionDays: z.coerce.number().int().min(1).max(365),
+  loggingEnabled: z.boolean(),
+  logWebhookRequests: z.boolean(),
+  logApiRequests: z.boolean()
+});
+
+export type LoggingSettings = z.infer<typeof LoggingSettingsSchema>;
 
 export type Platform = 'slack' | 'discord' | 'teams' | 'generic_webhook';
 
@@ -7,7 +17,7 @@ export interface Integration {
   platform: Platform;
   webhookUrl: string;
   enabled: boolean;
-  targetFormat: 'json' | 'xml' | 'text';
+  fieldFilterId?: string; // New field to reference the field filter configuration
 }
 
 export interface User {
@@ -23,7 +33,8 @@ export interface ApiEndpointConfig {
   name: string; 
   path: string; // This will now be a secure UUID instead of user-defined
   associatedIntegrationIds: string[]; 
-  createdAt: string; 
+  createdAt: string;
+  ipWhitelist?: string[]; // IP addresses allowed to access this specific endpoint
 }
 
 export interface LoggedIntegrationAttempt {
@@ -31,12 +42,23 @@ export interface LoggedIntegrationAttempt {
   integrationName: string;
   platform: Platform;
   status: 'success' | 'failed_transformation' | 'failed_relay' | 'skipped_disabled' | 'skipped_no_association';
-  targetFormat: 'json' | 'xml' | 'text';
   webhookUrl: string;
   errorDetails?: string;
   outgoingPayload?: string; 
   responseStatus?: number;
   responseBody?: string; 
+}
+
+export interface SecuritySettings {
+  id: string; // Should be a fixed value like 'default_security_settings'
+  rateLimitMaxRequests: number; // Requests per window
+  rateLimitWindowMs: number; // Time window in milliseconds
+  maxPayloadSize: number; // In bytes
+  logRetentionDays: number; // How long to keep logs
+  apiRateLimitEnabled: boolean; // Whether rate limiting is enabled
+  webhookRateLimitEnabled: boolean; // Whether rate limiting is enabled for webhook calls
+  ipWhitelist: string[]; // List of IPs that bypass rate limiting
+  enableDetailedErrorLogs: boolean; // Whether to include detailed error info in logs
 }
 
 export interface LogEntry {
@@ -67,4 +89,25 @@ export interface SmtpSettings {
   secure: boolean;
   fromEmail: string;
   appBaseUrl: string; // For constructing links in emails
+}
+
+// New interface for the field filter approach
+export interface FieldFilterConfig {
+  id: string;
+  name: string;
+  includedFields: string[]; // List of fields to include
+  excludedFields: string[]; // List of fields to explicitly exclude
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  sampleData?: string; // Sample data used to create this filter
+}
+
+export interface TemplateMapping {
+  id: string;
+  platform: Platform;
+  template: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
 }

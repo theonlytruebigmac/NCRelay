@@ -20,7 +20,7 @@ import { useState, useEffect, Suspense } from "react";
 import { Logo } from "@/components/icons/Logo";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { resetPasswordAction } from "../actions";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 const resetPasswordSchema = z.object({
@@ -34,7 +34,6 @@ const resetPasswordSchema = z.object({
 type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
 function ResetPasswordFormComponent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);

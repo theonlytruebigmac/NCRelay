@@ -1,4 +1,3 @@
-
 "use client";
 
 import { PageShell } from "@/components/layout/PageShell";
@@ -83,7 +82,7 @@ export default function ProfilePage() {
     setIsSubmittingProfile(true);
     profileForm.clearErrors();
     let overallSuccess = true;
-    let messages: { title: string; description: string; variant?: "destructive" }[] = [];
+    const messages: { title: string; description: string; variant?: "destructive" }[] = [];
 
     if (nameChanged) {
       const nameFormData = new FormData();
@@ -293,4 +292,3 @@ export default function ProfilePage() {
   );
 }
 
-    

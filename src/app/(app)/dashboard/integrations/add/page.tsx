@@ -1,4 +1,3 @@
-
 "use client";
 
 import { IntegrationForm } from "@/components/dashboard/IntegrationForm";
@@ -6,10 +5,12 @@ import type { IntegrationFormValues } from "@/components/dashboard/IntegrationFo
 import { PageShell } from "@/components/layout/PageShell";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form"; // Import useForm
 import { zodResolver } from "@hookform/resolvers/zod"; // If you have a schema for the page itself, or reuse integrationSchema
 import { addIntegrationAction } from "../actions";
+import { getFieldFiltersAction } from "../../filters/actions";
+import type { FieldFilterConfig } from "@/lib/types";
 
 // Assuming IntegrationFormValues is the correct schema for the form
 // If not, define a schema here or import the one used by IntegrationForm
@@ -19,6 +20,26 @@ export default function AddIntegrationPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldFilters, setFieldFilters] = useState<FieldFilterConfig[]>([]);
+
+  // Load field filters
+  useEffect(() => {
+    async function fetchFilters() {
+      try {
+        // Fetch field filters
+        const fetchedFilters = await getFieldFiltersAction();
+        setFieldFilters(fetchedFilters);
+      } catch (error) {
+        console.error("Failed to load filters:", error);
+        toast({
+          title: "Warning",
+          description: "Failed to load some resources. Some options may be unavailable.",
+          variant: "destructive",
+        });
+      }
+    }
+    fetchFilters();
+  }, [toast]);
 
   // Initialize useForm here to pass the form instance to IntegrationForm
   // and to use form.setError
@@ -29,7 +50,7 @@ export default function AddIntegrationPage() {
       platform: 'generic_webhook',
       webhookUrl: "",
       enabled: true,
-      targetFormat: 'json',
+      fieldFilterId: 'none',
     },
   });
 
@@ -37,9 +58,16 @@ export default function AddIntegrationPage() {
     setIsSubmitting(true);
     form.clearErrors(); // Clear previous server errors
 
+    // Convert the "none" value for fieldFilterId to undefined/null
+    if (data.fieldFilterId === 'none') {
+      data.fieldFilterId = undefined;
+    }
+
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
-      formData.append(key, String(value));
+      if (value !== undefined && value !== null) {
+        formData.append(key, String(value));
+      }
     });
 
     const result = await addIntegrationAction(formData);
@@ -87,6 +115,7 @@ export default function AddIntegrationPage() {
         onSubmit={handleSubmit} // Pass raw handler
         isSubmitting={isSubmitting}
         submitButtonText="Create Integration"
+        fieldFilters={fieldFilters}
       />
     </PageShell>
   );

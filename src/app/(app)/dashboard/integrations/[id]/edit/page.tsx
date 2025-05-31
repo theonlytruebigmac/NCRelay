@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,10 +6,11 @@ import { IntegrationForm } from "@/components/dashboard/IntegrationForm";
 import type { IntegrationFormValues } from "@/components/dashboard/IntegrationForm";
 import { PageShell } from "@/components/layout/PageShell";
 import { useToast } from "@/hooks/use-toast";
-import type { Integration } from "@/lib/types";
+import type { Integration, FieldFilterConfig } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getIntegrationByIdAction, updateIntegrationAction } from "../../actions";
+import { getFieldFiltersAction } from "../../../filters/actions";
 import { useForm } from "react-hook-form"; // Import useForm
 import { zodResolver } from "@hookform/resolvers/zod"; // If needed for schema
 
@@ -24,6 +24,7 @@ export default function EditIntegrationPage() {
   const [integration, setIntegration] = useState<Integration | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldFilters, setFieldFilters] = useState<FieldFilterConfig[]>([]);
 
   const integrationId = params.id as string;
 
@@ -34,26 +35,39 @@ export default function EditIntegrationPage() {
   });
 
   useEffect(() => {
-    if (integrationId) {
+    async function loadData() {
       setIsLoading(true);
-      getIntegrationByIdAction(integrationId)
-        .then((data) => {
+      
+      try {
+        // Load field filters
+        const fetchedFilters = await getFieldFiltersAction();
+        setFieldFilters(fetchedFilters);
+        
+        // Load integration
+        if (integrationId) {
+          const data = await getIntegrationByIdAction(integrationId);
           if (data) {
             setIntegration(data);
-            form.reset(data); // Populate form with fetched data
+            // Transform the data to use "none" for null/undefined fieldFilterId
+            const formData = {
+              ...data,
+              fieldFilterId: data.fieldFilterId || 'none'
+            };
+            form.reset(formData); // Populate form with fetched data
           } else {
             toast({ variant: "destructive", title: "Error", description: "Integration not found." });
             router.replace("/dashboard/integrations");
           }
-        })
-        .catch((error) => {
-          console.error("Failed to load integration:", error);
-          toast({ variant: "destructive", title: "Error", description: "Failed to load integration data." });
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
+        }
+      } catch (error) {
+        console.error("Failed to load data:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to load required data." });
+      } finally {
+        setIsLoading(false);
+      }
     }
+    
+    loadData();
   }, [integrationId, router, toast, form]);
 
   const handleSubmit = async (data: IntegrationFormValues) => {
@@ -61,9 +75,16 @@ export default function EditIntegrationPage() {
     setIsSubmitting(true);
     form.clearErrors(); // Clear previous server errors
 
+    // Convert the "none" value for fieldFilterId to undefined/null
+    if (data.fieldFilterId === 'none') {
+      data.fieldFilterId = undefined;
+    }
+
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
-      formData.append(key, String(value));
+      if (value !== undefined && value !== null) {
+        formData.append(key, String(value));
+      }
     });
 
     const result = await updateIntegrationAction(integrationId, formData);
@@ -129,6 +150,7 @@ export default function EditIntegrationPage() {
         initialData={integration} // Keep initialData for default values setup if needed by form
         onSubmit={handleSubmit} // Pass raw handler
         isSubmitting={isSubmitting}
+        fieldFilters={fieldFilters}
         submitButtonText="Save Changes"
       />
     </PageShell>
