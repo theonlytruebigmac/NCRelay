@@ -11,7 +11,8 @@
   "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
   "testPathIgnorePatterns": [
     "/node_modules/",
-    "/dist/"
+    "/dist/",
+    "\\.d\\.ts$"
   ],
   "moduleNameMapper": {
     "^@/(.*)$": "<rootDir>/src/$1"

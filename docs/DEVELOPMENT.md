@@ -193,7 +193,8 @@ The database includes the following tables:
      path TEXT NOT NULL UNIQUE,
      associatedIntegrationIds TEXT NOT NULL, -- JSON string array
      createdAt TEXT NOT NULL,
-     description TEXT -- Added in migration 002
+     description TEXT, -- Added in migration 002
+     ipWhitelist TEXT DEFAULT '[]' -- Added in migration 008, JSON array of allowed IPs
    );
    ```
 
@@ -269,10 +270,18 @@ NCRelay API is built with Next.js API routes in the App Router:
 ### Request Processing Flow
 
 1. **Receipt**: XML data is received at a custom endpoint
-2. **Processing**: Data is parsed and validated
-3. **Transformation**: Converted to the target format (JSON, text, XML)
-4. **Relay**: Sent to configured webhooks
-5. **Logging**: Request details and results are logged
+2. **IP Validation**: Client IP is checked against endpoint's whitelist (if configured)
+3. **Processing**: Data is parsed and validated
+4. **Transformation**: Converted to the target format (JSON, text, XML)
+5. **Relay**: Sent to configured webhooks
+6. **Logging**: Request details and results are logged
+
+### Security Features
+
+1. **IP Address Whitelisting**: Endpoints can restrict access to specific IP addresses
+2. **Secure UUID Paths**: Endpoints use random UUIDs to prevent enumeration attacks
+3. **Data Encryption**: Sensitive data like webhook URLs are encrypted at rest
+4. **Authentication**: Protected routes require user authentication
 
 ## Frontend Components
 
@@ -287,6 +296,8 @@ The UI is built with React components styled with Tailwind CSS:
 ### Component Organization
 
 - **UI Components**: Reusable UI elements in `src/components/ui/`
+  - `ip-whitelist-manager.tsx`: Component for managing IP address whitelists
+  - Form components, buttons, dialogs, and other UI primitives
 - **Layout Components**: Structural components in `src/components/layout/`
 - **Feature Components**: Feature-specific components in `src/components/dashboard/`
 

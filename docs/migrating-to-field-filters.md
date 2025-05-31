@@ -76,3 +76,14 @@ Moving forward, we recommend:
 - Using field filters for all new integrations
 - Gradually migrating existing integrations to field filters
 - Creating standardized field filters for common notification types
+- Consider implementing [IP whitelisting](./ip-whitelisting.md) for additional security on custom API endpoints
+
+## Additional Security Features
+
+In addition to field filters, NCRelay offers:
+
+- **IP Whitelisting**: Restrict access to custom API endpoints by IP address
+- **Secure Authentication**: Built-in user authentication and session management
+- **Data Filtering**: Control which fields are processed and forwarded
+
+For more information on security features, see the [IP Whitelisting documentation](./ip-whitelisting.md).

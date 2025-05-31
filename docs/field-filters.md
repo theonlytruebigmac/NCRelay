@@ -18,6 +18,14 @@ Field filters allow you to:
 - **Consistent Field Extraction**: Fields are extracted consistently regardless of XML structure variations
 - **Reusable Configurations**: Create once, use in multiple integrations
 
+## Security Features
+
+Field filters work alongside NCRelay's other security features:
+
+- **IP Whitelisting**: Restrict access to custom API endpoints by IP address (see [IP Whitelisting documentation](./ip-whitelisting.md))
+- **Data Filtering**: Control which fields are extracted and processed from notifications
+- **Integration-Specific Filtering**: Apply different field filters to different integrations
+
 ## Creating a Field Filter
 
 1. Navigate to **Dashboard > Field Filters > Create New Filter**

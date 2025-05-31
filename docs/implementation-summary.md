@@ -1,5 +1,39 @@
 # NCRelay Feature Implementation Summary
 
+## IP Address Whitelisting System
+
+### Overview
+The IP address whitelisting system provides endpoint-specific security controls, allowing administrators to restrict access to custom API endpoints to specific IP addresses.
+
+### Completed Implementation
+
+1. **Database Schema**
+   - Added `ipWhitelist` column to `api_endpoints` table (migration 008)
+   - JSON array storage for IP addresses with default empty array
+   - Backward compatibility with existing endpoints
+
+2. **Security Logic**
+   - Enhanced `isIPAllowedForEndpoint()` utility function
+   - Support for IPv4 and IPv6 addresses
+   - Localhost variations handling (`127.0.0.1`, `::1`, `localhost`)
+   - Whitespace trimming and validation
+
+3. **API Route Protection**
+   - Custom endpoint route validates IP addresses before processing
+   - Returns 403 Forbidden with proper logging for denied requests
+   - Maintains CORS headers for error responses
+
+4. **User Interface**
+   - Created reusable `IpWhitelistManager` React component
+   - Visual IP address management with badges and validation
+   - Integration with API endpoints dashboard
+   - Form validation and error handling
+
+5. **Testing and Documentation**
+   - Comprehensive test suite covering edge cases
+   - User documentation with examples and troubleshooting
+   - Security considerations and best practices
+
 ## Field Filter System
 
 ### Overview

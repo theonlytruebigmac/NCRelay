@@ -1,6 +1,7 @@
 {
   "name": "nextn",
   "version": "0.1.0",
+  "description": "NCRelay - N-central notification relay and processing platform with custom API endpoints, field filters, and IP whitelisting security features",
   "private": true,
   "type": "module",
   "scripts": {
