@@ -42,18 +42,63 @@ interface TeamsAdaptiveCard {
 
 // Helper functions
 function getStatusColor(data: ExtractedData): string {
-  const status = ((data.Status || data.status || data.QualitativeNewState || '') + '').toLowerCase();
+  // First check QualitativeNewState for most accurate status
+  const qualitativeNewState = ((data.QualitativeNewState || '') + '').toLowerCase();
+  if (qualitativeNewState) {
+    if (qualitativeNewState === 'failed' || qualitativeNewState === 'failure') {
+      return 'attention'; // Red for Teams
+    }
+    if (qualitativeNewState === 'normal' || qualitativeNewState === 'ok') {
+      return 'good'; // Green for Teams
+    }
+    if (qualitativeNewState === 'warning' || qualitativeNewState === 'warn') {
+      return 'warning'; // Yellow for Teams
+    }
+  }
+
+  // Fallback to other status fields
+  const status = ((data.Status || data.status || '') + '').toLowerCase();
   const severity = ((data.Severity || data.severity || '') + '').toLowerCase();
 
   if (status.includes('error') || status.includes('failed') || severity.includes('critical')) {
     return 'attention';
   } else if (status.includes('warn') || severity.includes('warning')) {
     return 'warning';
-  } else if (status.includes('ok') || status.includes('success') || status.includes('resolved')) {
+  } else if (status.includes('ok') || status.includes('success') || status.includes('resolved') || status.includes('normal')) {
     return 'good';
   }
   
   return 'default';
+}
+
+function getDiscordEmbedColor(data: ExtractedData): number {
+  // First check QualitativeNewState for most accurate status
+  const qualitativeNewState = ((data.QualitativeNewState || '') + '').toLowerCase();
+  if (qualitativeNewState) {
+    if (qualitativeNewState === 'failed' || qualitativeNewState === 'failure') {
+      return 0xff0000; // Red for Failed
+    }
+    if (qualitativeNewState === 'normal' || qualitativeNewState === 'ok') {
+      return 0x00ff00; // Green for Normal/OK
+    }
+    if (qualitativeNewState === 'warning' || qualitativeNewState === 'warn') {
+      return 0xffaa00; // Orange for Warning
+    }
+  }
+
+  // Fallback to other status fields
+  const status = ((data.Status || data.status || '') + '').toLowerCase();
+  const severity = ((data.Severity || data.severity || '') + '').toLowerCase();
+
+  if (status.includes('error') || status.includes('failed') || severity.includes('critical')) {
+    return 0xff0000; // Red
+  } else if (status.includes('warn') || severity.includes('warning')) {
+    return 0xffaa00; // Orange
+  } else if (status.includes('ok') || status.includes('success') || status.includes('resolved') || status.includes('normal')) {
+    return 0x00ff00; // Green
+  }
+  
+  return 0x36a64f; // Default green
 }
 
 function createTeamsCard(data: ExtractedData, fieldFilter: FieldFilterConfig | null = null): TeamsAdaptiveCard {
@@ -415,14 +460,88 @@ export async function POST(
 
           // Platform-specific formatting
           if (integration.platform === 'discord') {
-            // Discord webhook format - always uses JSON
-            const content = `**Notification Received**\n\`\`\`json\n${JSON.stringify(processedData, null, 2)}\n\`\`\``;
-            payloadToSend = JSON.stringify({ content });
+            // Discord webhook format - use rich embeds
+            const embedColor = getDiscordEmbedColor(processedData);
+            
+            // Extract title and description with type safety
+            const title = String(processedData.DeviceName || processedData.title || 'N-Central Notification');
+            const description = String(processedData.AffectedService || processedData.message || 'Notification received');
+            
+            // Create fields for important data
+            const fields = [];
+            
+            // Add key fields
+            if (processedData.QualitativeNewState) {
+              fields.push({
+                name: 'Status',
+                value: String(processedData.QualitativeNewState),
+                inline: true
+              });
+            }
+            if (processedData.CustomerName) {
+              fields.push({
+                name: 'Customer',
+                value: String(processedData.CustomerName),
+                inline: true
+              });
+            }
+            if (processedData.DeviceURI) {
+              fields.push({
+                name: 'Device URI',
+                value: String(processedData.DeviceURI),
+                inline: true
+              });
+            }
+            if (processedData.TimeOfStateChange) {
+              fields.push({
+                name: 'Time of Change',
+                value: String(processedData.TimeOfStateChange),
+                inline: true
+              });
+            }
+            
+            // Add remaining fields (limit to avoid Discord limits)
+            const remainingFields = Object.entries(processedData)
+              .filter(([key, value]) => 
+                value !== undefined && 
+                typeof value === 'string' &&
+                !['DeviceName', 'AffectedService', 'QualitativeNewState', 'CustomerName', 'DeviceURI', 'TimeOfStateChange'].includes(key) &&
+                fields.length < 20 // Discord embed field limit is 25
+              )
+              .slice(0, 20 - fields.length);
+              
+            for (const [key, value] of remainingFields) {
+              fields.push({
+                name: key,
+                value: String(value).substring(0, 1024), // Discord field value limit
+                inline: String(value).length < 50
+              });
+            }
+
+            const embed = {
+              title: title.substring(0, 256), // Discord title limit
+              description: description.substring(0, 4096), // Discord description limit
+              color: embedColor,
+              fields: fields,
+              footer: {
+                text: 'NCRelay'
+              },
+              timestamp: new Date().toISOString()
+            };
+
+            payloadToSend = JSON.stringify({ embeds: [embed] });
             outgoingContentType = 'application/json';
           } else if (integration.platform === 'slack') {
-            // Slack webhook format - always uses JSON
-            const text = `*Notification Received*\n\`\`\`\n${JSON.stringify(processedData, null, 2)}\n\`\`\``;
-            payloadToSend = JSON.stringify({ text });
+            // Slack webhook format - use rich formatting
+            const { formatSlackMessage, createFallbackSlackMessage } = await import('@/lib/slack-formatter');
+            try {
+              const slackMessage = formatSlackMessage(processedData);
+              payloadToSend = JSON.stringify(slackMessage);
+            } catch (formattingError) {
+              console.warn(`[${integration.name}] Error formatting Slack message, using fallback:`, formattingError);
+              const fallbackMessage = createFallbackSlackMessage(processedData);
+              payloadToSend = JSON.stringify(fallbackMessage);
+            }
             outgoingContentType = 'application/json';
           } else {
             // Generic webhook - uses JSON format
