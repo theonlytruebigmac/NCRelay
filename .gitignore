@@ -28,7 +28,6 @@ yarn-error.log*
 .dockerignore
 docker-compose.yml
 docker-compose.dev.yml
-Dockerfile
 # VSCode
 .vscode
 
