@@ -11,6 +11,7 @@ import { migration as migration005 } from './005-add-field-filters.js';
 import migration006 from './006-remove-grok-patterns.js';
 import migration007 from './007-remove-target-format.js';
 import migration008 from './008-add-custom-endpoint-ip-whitelist.js';
+import migration009 from './009-add-userid-to-integrations.js';
 // Add new migration imports here...
 const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/app.db' : path.join(process.cwd(), 'app.db');
 // Create migrations table if it doesn't exist
@@ -81,6 +82,12 @@ function getAllMigrations() {
             name: migration008.name || 'add-custom-endpoint-ip-whitelist',
             up: migration008.up,
             down: migration008.down
+        },
+        {
+            id: 9,
+            name: migration009.name || 'add-userid-to-integrations',
+            up: migration009.up,
+            down: migration009.down
         },
     ];
     return migrations.sort((a, b) => a.id - b.id);

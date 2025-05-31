@@ -246,7 +246,9 @@ export async function getIntegrations(): Promise<Integration[]> {
     name: row.name as string,
     platform: row.platform as Platform,
     enabled: !!row.enabled,
-    webhookUrl: await decrypt(row.webhookUrl as string)
+    webhookUrl: await decrypt(row.webhookUrl as string),
+    fieldFilterId: (row.fieldFilterId as string) || undefined,
+    userId: (row.userId as string) || undefined
   })));
 }
 
@@ -261,7 +263,8 @@ export async function getIntegrationById(id: string): Promise<Integration | null
     platform: row.platform as Platform,
     webhookUrl: await decrypt(row.webhookUrl as string),
     enabled: !!row.enabled,
-    fieldFilterId: (row.fieldFilterId as string) || undefined
+    fieldFilterId: (row.fieldFilterId as string) || undefined,
+    userId: (row.userId as string) || undefined
   };
 }
 
@@ -295,7 +298,7 @@ export async function updateIntegration(id: string, integration: Partial<Omit<In
   const encryptedWebhookUrl = await encrypt(dataToSave.webhookUrl);
 
   const stmt = db.prepare(
-    'UPDATE integrations SET name = ?, platform = ?, webhookUrl = ?, enabled = ?, fieldFilterId = ? WHERE id = ?'
+    'UPDATE integrations SET name = ?, platform = ?, webhookUrl = ?, enabled = ?, fieldFilterId = ?, userId = ? WHERE id = ?'
   );
   stmt.run(
     dataToSave.name,
@@ -303,6 +306,7 @@ export async function updateIntegration(id: string, integration: Partial<Omit<In
     encryptedWebhookUrl,
     dataToSave.enabled ? 1 : 0,
     dataToSave.fieldFilterId || null,
+    dataToSave.userId || null,
     id
   );
   const updatedData = await getIntegrationById(id); 

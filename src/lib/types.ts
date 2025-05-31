@@ -18,6 +18,7 @@ export interface Integration {
   webhookUrl: string;
   enabled: boolean;
   fieldFilterId?: string; // New field to reference the field filter configuration
+  userId?: string; // User who created this integration
 }
 
 export interface User {
