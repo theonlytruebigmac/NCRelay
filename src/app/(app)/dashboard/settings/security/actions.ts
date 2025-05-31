@@ -60,7 +60,7 @@ export async function getSecuritySettingsAction(): Promise<SecuritySettings> {
   // Try to get existing settings
   const existingSettings = db.prepare(`
     SELECT * FROM security_settings WHERE id = ?
-  `).get('default_security_settings') as any;
+  `).get('default_security_settings') as Record<string, unknown> | undefined;
 
   if (!existingSettings) {
     // Get values from environment or use defaults
@@ -118,14 +118,14 @@ export async function getSecuritySettingsAction(): Promise<SecuritySettings> {
 
   // Convert from SQLite format to our type
   return {
-    id: existingSettings.id,
-    rateLimitMaxRequests: existingSettings.rateLimitMaxRequests,
-    rateLimitWindowMs: existingSettings.rateLimitWindowMs,
-    maxPayloadSize: existingSettings.maxPayloadSize,
-    logRetentionDays: existingSettings.logRetentionDays,
+    id: existingSettings.id as string,
+    rateLimitMaxRequests: existingSettings.rateLimitMaxRequests as number,
+    rateLimitWindowMs: existingSettings.rateLimitWindowMs as number,
+    maxPayloadSize: existingSettings.maxPayloadSize as number,
+    logRetentionDays: existingSettings.logRetentionDays as number,
     apiRateLimitEnabled: !!existingSettings.apiRateLimitEnabled,
     webhookRateLimitEnabled: !!existingSettings.webhookRateLimitEnabled,
-    ipWhitelist: JSON.parse(existingSettings.ipWhitelist || '[]'),
+    ipWhitelist: JSON.parse(existingSettings.ipWhitelist as string || '[]'),
     enableDetailedErrorLogs: !!existingSettings.enableDetailedErrorLogs,
   };
 }

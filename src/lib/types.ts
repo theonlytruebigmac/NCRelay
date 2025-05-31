@@ -1,3 +1,14 @@
+import { z } from 'zod';
+
+export const LoggingSettingsSchema = z.object({
+  logRetentionDays: z.coerce.number().int().min(1).max(365),
+  loggingEnabled: z.boolean(),
+  logWebhookRequests: z.boolean(),
+  logApiRequests: z.boolean()
+});
+
+export type LoggingSettings = z.infer<typeof LoggingSettingsSchema>;
+
 export type Platform = 'slack' | 'discord' | 'teams' | 'generic_webhook';
 
 export interface Integration {
@@ -22,7 +33,8 @@ export interface ApiEndpointConfig {
   name: string; 
   path: string; // This will now be a secure UUID instead of user-defined
   associatedIntegrationIds: string[]; 
-  createdAt: string; 
+  createdAt: string;
+  ipWhitelist?: string[]; // IP addresses allowed to access this specific endpoint
 }
 
 export interface LoggedIntegrationAttempt {

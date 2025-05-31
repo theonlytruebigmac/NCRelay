@@ -57,6 +57,7 @@ export async function processXmlWithFieldFilter(
 /**
  * Convert nested XML object into a flat structure with dot notation for nested fields
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function flattenXmlObject(obj: any, prefix: string = ''): Record<string, string> {
   const result: Record<string, string> = {};
   

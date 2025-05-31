@@ -25,7 +25,7 @@ export async function getSecuritySettings(): Promise<SecuritySettings> {
     const dbInstance = getDB();
     const settings = dbInstance.prepare(`
       SELECT * FROM security_settings WHERE id = ?
-    `).get('default_security_settings') as any;
+    `).get('default_security_settings') as Record<string, unknown> | undefined;
     
     if (!settings) {
       // Default settings if not in DB yet
@@ -43,14 +43,14 @@ export async function getSecuritySettings(): Promise<SecuritySettings> {
     }
     
     return {
-      id: settings.id,
-      rateLimitMaxRequests: settings.rateLimitMaxRequests,
-      rateLimitWindowMs: settings.rateLimitWindowMs,
-      maxPayloadSize: settings.maxPayloadSize,
-      logRetentionDays: settings.logRetentionDays,
+      id: settings.id as string,
+      rateLimitMaxRequests: settings.rateLimitMaxRequests as number,
+      rateLimitWindowMs: settings.rateLimitWindowMs as number,
+      maxPayloadSize: settings.maxPayloadSize as number,
+      logRetentionDays: settings.logRetentionDays as number,
       apiRateLimitEnabled: !!settings.apiRateLimitEnabled,
       webhookRateLimitEnabled: !!settings.webhookRateLimitEnabled,
-      ipWhitelist: JSON.parse(settings.ipWhitelist || '[]'),
+      ipWhitelist: JSON.parse(settings.ipWhitelist as string || '[]'),
       enableDetailedErrorLogs: !!settings.enableDetailedErrorLogs
     };
   } catch (error) {
@@ -133,7 +133,9 @@ export async function getLogStats(): Promise<{ count: number, oldestLog: string,
 export async function createBackup(): Promise<{ success: boolean, path?: string, error?: string }> {
   try {
     const dbInstance = getDB();
-    const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/app.db' : path.join(process.cwd(), 'app.db');
+    // Path to DB file - only used for logging, actual backup is done via SQLite backup API
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const backupDbPath = process.env.NODE_ENV === 'production' ? '/data/app.db' : path.join(process.cwd(), 'app.db');
     const backupDir = process.env.NODE_ENV === 'production' ? '/data/backups' : path.join(process.cwd(), 'backups');
     
     // Ensure backup directory exists

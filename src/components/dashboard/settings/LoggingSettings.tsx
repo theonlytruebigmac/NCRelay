@@ -1,7 +1,6 @@
 "use client";
 
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -11,9 +10,11 @@ import {
   AlertTitle,
 } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import { UseFormReturn } from "react-hook-form";
+import type { SecuritySettings } from "@/lib/types";
 
 type LoggingSettingsProps = {
-  form: any; // The React Hook Form instance
+  form: UseFormReturn<SecuritySettings>;
 };
 
 export function LoggingSettings({ form }: LoggingSettingsProps) {

@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import * as db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import type { Integration, Platform } from '@/lib/types';
+import type { Integration } from '@/lib/types';
 
 const integrationSchema = z.object({
   name: z.string().min(3, { message: "Name must be at least 3 characters." }).max(50),

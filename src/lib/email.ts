@@ -3,7 +3,6 @@
 
 import nodemailer from 'nodemailer';
 import * as db from '@/lib/db'; // To fetch SMTP settings
-import type { SmtpSettings } from './types';
 
 interface MailOptions {
   to: string;

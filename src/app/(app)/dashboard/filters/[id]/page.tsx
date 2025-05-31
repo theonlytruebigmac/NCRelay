@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
-import { Pencil, Trash2, Filter } from "lucide-react";
+import { Pencil, Filter } from "lucide-react";
 import Link from "next/link";
 import { DeleteFilterDialog } from "../DeleteFilterDialog";
 import { BackButton } from "@/components/layout/BackButton";

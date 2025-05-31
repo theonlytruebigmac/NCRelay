@@ -52,8 +52,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // Only validate UUID format for detail/edit pages
-    if (id !== 'create' && !pathSegments.includes('create')) {
+    // Only validate UUID format for detail/edit pages, excluding special paths
+    if (id !== 'create' && !pathSegments.includes('create') && !pathSegments.includes('edit')) {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(id)) {
         return NextResponse.redirect(new URL('/dashboard/filters', request.url));

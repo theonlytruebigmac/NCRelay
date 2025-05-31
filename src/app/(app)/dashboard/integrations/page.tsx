@@ -56,7 +56,7 @@ export default function IntegrationsPage() {
   const [isToggling, setIsToggling] = useState<string | null>(null); // Store ID of integration being toggled
   const { toast } = useToast();
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
 
   async function fetchIntegrations() {
@@ -78,7 +78,9 @@ export default function IntegrationsPage() {
 
   useEffect(() => {
     fetchIntegrations();
-  }, [toast]); // Removed fetchIntegrations from dependency array
+    // toast is not actually used in fetchIntegrations, so it doesn't need to be a dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
 
   const handleToggleEnabled = async (id: string, enabled: boolean) => {
@@ -209,7 +211,7 @@ export default function IntegrationsPage() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the integration
-              "{integrationToDelete?.name}".
+              &quot;{integrationToDelete?.name}&quot;.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

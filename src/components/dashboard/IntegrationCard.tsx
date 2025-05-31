@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { platformIcons, platformNames, getPlatformFormatDescription } from "@/lib/platform-helpers";
 import { Edit, Trash2, Copy, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { WebhookUrlField } from "@/components/ui/webhook-url-field";
 
 interface IntegrationCardProps {
   integration: Integration;
@@ -20,12 +20,6 @@ interface IntegrationCardProps {
 
 export function IntegrationCard({ integration, onToggleEnabled, onEdit, onDelete, isToggling = false }: IntegrationCardProps) {
   const PlatformIcon = platformIcons[integration.platform];
-  const { toast } = useToast();
-
-  const handleCopyWebhook = () => {
-    navigator.clipboard.writeText(integration.webhookUrl);
-    toast({ title: "Webhook URL Copied!" });
-  };
   
   return (
     <Card className="flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300">
@@ -43,13 +37,13 @@ export function IntegrationCard({ integration, onToggleEnabled, onEdit, onDelete
       </CardHeader>
       <CardContent className="flex-grow space-y-3">
         <div>
-          <h4 className="text-sm font-medium text-muted-foreground">Webhook URL</h4>
-          <div className="flex items-center">
-            <p className="truncate text-sm text-foreground flex-grow" title={integration.webhookUrl}>{integration.webhookUrl}</p>
-            <Button variant="ghost" size="icon" onClick={handleCopyWebhook} className="ml-2 shrink-0">
-              <Copy className="h-4 w-4" />
-            </Button>
-          </div>
+          <h4 className="text-sm font-medium text-muted-foreground mb-1">Webhook URL</h4>
+          <WebhookUrlField
+            value={integration.webhookUrl}
+            showCopyButton={true}
+            disabled={true}
+            className="text-sm"
+          />
         </div>
         <div>
           <h4 className="text-sm font-medium text-muted-foreground">Format</h4>

@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 
-export default {
+const migration = {
   name: 'add-security-settings',
   up: (db: Database.Database): void => {
     // Create the security settings table
@@ -52,3 +52,5 @@ export default {
     db.exec(`DROP TABLE IF EXISTS security_settings;`);
   }
 };
+
+export default migration;

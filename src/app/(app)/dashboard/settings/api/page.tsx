@@ -1,12 +1,11 @@
-
 "use client";
 
 import { PageShell } from "@/components/layout/PageShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Copy, Trash2, PlusCircle, AlertTriangle, Info, Waypoints, Edit3, Loader2 } from "lucide-react";
-import { useState, useEffect, useTransition } from "react";
+import { Copy, Trash2, PlusCircle, Waypoints, Edit3, Loader2, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ApiEndpointConfig, Integration, Platform } from "@/lib/types";
@@ -39,7 +38,6 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
@@ -51,10 +49,13 @@ import {
     deleteApiEndpointAction,
     getIntegrationsForEndpointSelectionAction
 } from "./actions";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormField, FormItem, FormControl, FormMessage, FormLabel } from "@/components/ui/form";
+import { WebhookUrlField } from "@/components/ui/webhook-url-field";
+import { UuidField } from "@/components/ui/uuid-field";
+import { IpWhitelistManager } from "@/components/ui/ip-whitelist-manager";
 
 
 type IntegrationForSelection = Pick<Integration, 'id' | 'name' | 'platform' | 'enabled'>;
@@ -62,6 +63,7 @@ type IntegrationForSelection = Pick<Integration, 'id' | 'name' | 'platform' | 'e
 const endpointFormSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters.").max(50, "Name must be at most 50 characters."),
   associatedIntegrationIds: z.array(z.string()).default([]),
+  ipWhitelist: z.array(z.string()).default([]),
 });
 
 export type EndpointFormValues = z.infer<typeof endpointFormSchema>;
@@ -95,11 +97,11 @@ export default function ApiEndpointsPage() {
     defaultValues: {
       name: "",
       associatedIntegrationIds: [],
+      ipWhitelist: [],
     },
   });
 
-
-  const fetchPageData = async () => {
+  const fetchPageData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [endpoints, integrations] = await Promise.all([
@@ -114,11 +116,11 @@ export default function ApiEndpointsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchPageData();
-  }, [toast]); // Removed fetchPageData from dependency array to avoid re-fetch on its own change
+  }, [fetchPageData]); // Now fetchPageData includes toast in its dependencies
 
   // API Endpoint Functions
   const handleOpenEndpointDialog = (endpoint?: ApiEndpointConfig) => {
@@ -127,10 +129,12 @@ export default function ApiEndpointsPage() {
       setEditingEndpoint(endpoint);
       form.setValue("name", endpoint.name);
       form.setValue("associatedIntegrationIds", Array.isArray(endpoint.associatedIntegrationIds) ? [...endpoint.associatedIntegrationIds] : []);
+      form.setValue("ipWhitelist", Array.isArray(endpoint.ipWhitelist) ? [...endpoint.ipWhitelist] : []);
     } else {
       setEditingEndpoint(null);
       form.setValue("name", "");
       form.setValue("associatedIntegrationIds", []);
+      form.setValue("ipWhitelist", []);
     }
     setShowEndpointDialog(true);
   };
@@ -148,6 +152,7 @@ export default function ApiEndpointsPage() {
         const formData = new FormData();
         formData.append('name', values.name);
         values.associatedIntegrationIds.forEach(id => formData.append('associatedIntegrationIds[]', id));
+        values.ipWhitelist.forEach(ip => formData.append('ipWhitelist[]', ip));
 
         form.clearErrors();
 
@@ -169,7 +174,7 @@ export default function ApiEndpointsPage() {
         } else if (result?.error) {
             toast({ variant: "destructive", title: "Error", description: result.error });
         } else {
-            toast({ title: editingEndpoint ? "Endpoint Updated" : "Endpoint Created", description: `Endpoint "${values.name}" has been ${editingEndpoint ? 'updated' : 'added'}.` });
+            toast({ title: editingEndpoint ? "Endpoint Updated" : "Endpoint Created", description: `Endpoint &quot;${values.name}&quot; has been ${editingEndpoint ? 'updated' : 'added'}.` });
             setShowEndpointDialog(false);
             setEditingEndpoint(null);
             fetchPageData(); // Re-fetch data
@@ -189,7 +194,7 @@ export default function ApiEndpointsPage() {
         if (result?.error) {
             toast({ variant: "destructive", title: "Error", description: result.error });
         } else {
-            toast({ title: "Endpoint Deleted", description: `Endpoint "${endpointToDelete.name}" has been removed.` });
+            toast({ title: "Endpoint Deleted", description: `Endpoint &quot;${endpointToDelete.name}&quot; has been removed.` });
             fetchPageData(); // Re-fetch data
         }
         setShowDeleteEndpointConfirmDialog(false);
@@ -224,7 +229,7 @@ export default function ApiEndpointsPage() {
           {isLoading ? (
             <Skeleton className="h-20 w-full" />
           ) : apiEndpoints.length === 0 ? (
-             <p className="text-sm text-muted-foreground text-center py-4">No custom endpoints configured. Click "Add Endpoint" to create one.</p>
+             <p className="text-sm text-muted-foreground text-center py-4">No custom endpoints configured. Click &quot;Add Endpoint&quot; to create one.</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -234,6 +239,7 @@ export default function ApiEndpointsPage() {
                     <TableHead>Secure UUID Path</TableHead>
                     <TableHead>Full Endpoint URL</TableHead>
                     <TableHead>Associated Integrations</TableHead>
+                    <TableHead>IP Whitelist</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -242,30 +248,44 @@ export default function ApiEndpointsPage() {
                   {apiEndpoints.map((endpoint) => (
                     <TableRow key={endpoint.id}>
                       <TableCell className="font-medium whitespace-nowrap">{endpoint.name}</TableCell>
-                      <TableCell className="font-mono text-sm">{endpoint.path}</TableCell>
                       <TableCell>
-                         <div className="flex items-center space-x-1 min-w-[300px]">
-                          <Input
-                            type="text"
-                            readOnly
-                            value={`${origin}/api/custom/${endpoint.path}`}
-                            className="font-mono text-xs h-8 flex-grow"
-                            aria-label="Full Endpoint URL"
+                        <div className="min-w-[200px]">
+                          <UuidField
+                            value={endpoint.path}
+                            showCopyButton={true}
+                            className="font-mono text-sm"
                           />
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 shrink-0"
-                            onClick={() => {
-                                navigator.clipboard.writeText(`${origin}/api/custom/${endpoint.path}`);
-                                toast({title: "Endpoint URL Copied!"});
-                            }}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="min-w-[300px]">
+                          <WebhookUrlField
+                            value={`${origin}/api/custom/${endpoint.path}`}
+                            disabled={true}
+                            showCopyButton={true}
+                            className="font-mono text-xs h-8"
+                          />
                         </div>
                       </TableCell>
                       <TableCell className="text-xs">{getAssociatedIntegrationsDisplay(endpoint.associatedIntegrationIds)}</TableCell>
+                      <TableCell className="text-xs">
+                        {endpoint.ipWhitelist && endpoint.ipWhitelist.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {endpoint.ipWhitelist.slice(0, 2).map((ip, index) => (
+                              <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {ip}
+                              </span>
+                            ))}
+                            {endpoint.ipWhitelist.length > 2 && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                +{endpoint.ipWhitelist.length - 2} more
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">All IPs allowed</span>
+                        )}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap">{format(new Date(endpoint.createdAt), "MMM d, yyyy")}</TableCell>
                       <TableCell className="text-right space-x-1 whitespace-nowrap">
                         <Button variant="outline" size="icon" onClick={() => handleOpenEndpointDialog(endpoint)} className="h-9 w-9" disabled={isPending}><Edit3 className="h-4 w-4" /></Button>
@@ -281,7 +301,7 @@ export default function ApiEndpointsPage() {
       </Card>
       
       <Dialog open={showEndpointDialog} onOpenChange={(open) => { if(!open && !isPending) { form.reset(); setEditingEndpoint(null); } setShowEndpointDialog(open); }}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
            <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmitEndpointForm)} className="space-y-6">
                 <DialogHeader>
@@ -324,7 +344,7 @@ export default function ApiEndpointsPage() {
                 <FormField
                   control={form.control}
                   name="associatedIntegrationIds"
-                  render={({ field }) => ( // field is not directly used here as Checkbox group is custom
+                  render={() => ( // No field parameter needed since we're using custom checkbox implementation
                     <FormItem>
                       <FormLabel>Associated Integrations</FormLabel>
                       {integrationsForSelection.length === 0 ? (
@@ -356,6 +376,28 @@ export default function ApiEndpointsPage() {
                   )}
                 />
 
+                <FormField
+                  control={form.control}
+                  name="ipWhitelist"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>IP Whitelist (Optional)</FormLabel>
+                      <FormControl>
+                        <IpWhitelistManager
+                          ipList={field.value}
+                          onIpListChange={field.onChange}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Restrict access to specific IP addresses. Leave empty to allow all IPs. Supports both IPv4 and IPv6 addresses. 
+                        You can use <code>127.0.0.1</code>, <code>::1</code>, or <code>localhost</code> for local testing.
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <DialogFooter>
                   <DialogClose asChild><Button type="button" variant="outline" disabled={isPending}>Cancel</Button></DialogClose>
                   <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isPending}>
@@ -373,7 +415,7 @@ export default function ApiEndpointsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center"><AlertTriangle className="mr-2 h-6 w-6 text-destructive" />Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the endpoint "{endpointToDelete?.name}" (path: /api/custom/{endpointToDelete?.path}). This action cannot be undone.
+              This will permanently delete the endpoint &quot;{endpointToDelete?.name}&quot; (path: /api/custom/{endpointToDelete?.path}). This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

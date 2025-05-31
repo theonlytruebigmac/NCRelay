@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 
-export default {
+const migration = {
   name: 'add-description-to-endpoints',
   up: (db: Database.Database): void => {
     // Add a description column to api_endpoints table
@@ -20,3 +20,5 @@ export default {
     `);
   }
 };
+
+export default migration;

@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import fs from 'fs';
+import { fileURLToPath } from 'url';
 
 // Import all migrations statically
 // When adding a new migration, import it here
@@ -11,6 +11,7 @@ import migration004 from './004-add-grok-patterns';
 import { migration as migration005 } from './005-add-field-filters';
 import migration006 from './006-remove-grok-patterns';
 import migration007 from './007-remove-target-format';
+import migration008 from './008-add-custom-endpoint-ip-whitelist';
 // Add new migration imports here...
 
 const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/app.db' : path.join(process.cwd(), 'app.db');
@@ -41,7 +42,7 @@ function getAppliedMigrations(db: Database.Database): number[] {
     const stmt = db.prepare('SELECT id FROM migrations ORDER BY id ASC');
     const rows = stmt.all() as { id: number }[];
     return rows.map(row => row.id);
-  } catch (error) {
+  } catch (_error) {
     return [];
   }
 }
@@ -86,6 +87,12 @@ function getAllMigrations(): Migration[] {
       name: migration007.name || 'remove-target-format',
       up: migration007.up,
       down: migration007.down
+    },
+    {
+      id: 8,
+      name: migration008.name || 'add-custom-endpoint-ip-whitelist',
+      up: migration008.up,
+      down: migration008.down
     },
   ];
   
@@ -150,7 +157,12 @@ export async function runMigrations(): Promise<void> {
 }
 
 // Run migrations if this file is executed directly
-if (require.main === module) {
+const __filename = fileURLToPath(import.meta.url);
+
+// Check if this file is being run directly in ES modules
+const isMainModule = process.argv[1] === __filename;
+
+if (isMainModule) {
   runMigrations()
     .then(() => {
       console.log('Migration process completed successfully');

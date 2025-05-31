@@ -19,7 +19,7 @@ export const getInitials = (name?: string) => {
   return "RZ";
 };
 
-export async function parseXmlToJson(xml: string): Promise<any> {
+export async function parseXmlToJson(xml: string): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
     parseString(
       xml,
@@ -64,4 +64,53 @@ export function getClientIP(request: NextRequest): string {
   }
 
   return 'unknown';
+}
+
+/**
+ * Checks if an IP address is allowed by the custom endpoint's IP whitelist
+ * @param clientIP The client's IP address
+ * @param endpointWhitelist Array of IP addresses allowed for the endpoint
+ * @returns boolean indicating if the IP is allowed
+ */
+export function isIPAllowedForEndpoint(clientIP: string, endpointWhitelist: string[]): boolean {
+  // If no whitelist is configured, allow all IPs
+  if (!endpointWhitelist || endpointWhitelist.length === 0) {
+    return true;
+  }
+  
+  // Handle unknown or empty client IP
+  if (!clientIP || clientIP === 'unknown') {
+    return false;
+  }
+  
+  // Normalize the client IP (trim whitespace)
+  const normalizedClientIP = clientIP.trim();
+  
+  // Check each IP in the whitelist
+  for (const whitelistedIP of endpointWhitelist) {
+    const normalizedWhitelistedIP = whitelistedIP.trim();
+    
+    // Direct match
+    if (normalizedClientIP === normalizedWhitelistedIP) {
+      return true;
+    }
+    
+    // Handle IPv6 localhost variations
+    if (normalizedClientIP === '::1' && (normalizedWhitelistedIP === '127.0.0.1' || normalizedWhitelistedIP === 'localhost')) {
+      return true;
+    }
+    if (normalizedClientIP === '127.0.0.1' && normalizedWhitelistedIP === '::1') {
+      return true;
+    }
+    
+    // Handle localhost variations
+    if (normalizedClientIP === '127.0.0.1' && normalizedWhitelistedIP === 'localhost') {
+      return true;
+    }
+    if (normalizedClientIP === 'localhost' && normalizedWhitelistedIP === '127.0.0.1') {
+      return true;
+    }
+  }
+  
+  return false;
 }

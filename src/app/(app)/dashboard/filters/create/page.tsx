@@ -18,7 +18,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -142,15 +142,14 @@ const TestXMLForm = ({ form, xmlInput, setXmlInput, extractFields, isExtracting,
 );
 
 interface FieldSelectionFormProps {
-  form: UseFormReturn<z.infer<typeof formSchema>>;
   extractedFields: FieldData[];
   showAllFields: boolean;
   setShowAllFields: (value: boolean) => void;
   handleToggleField: (name: string, included: boolean) => void;
+  form: UseFormReturn<z.infer<typeof formSchema>>;
 }
 
 const FieldSelectionForm = ({
-  form,
   extractedFields,
   showAllFields,
   setShowAllFields,
@@ -199,7 +198,7 @@ const FieldSelectionForm = ({
         
         {extractedFields.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
-            No fields extracted. Try the "Extract Fields" button with sample XML.
+            No fields extracted. Try the &quot;Extract Fields&quot; button with sample XML.
           </div>
         )}
       </div>
@@ -234,6 +233,7 @@ export default function CreateFieldFilterPage() {
     loadLogSamples();
     // Extract field information on component load
     extractFields();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
   const loadLogSamples = async () => {
@@ -270,7 +270,7 @@ export default function CreateFieldFilterPage() {
           description: "Loaded default sample XML (no logs available)",
         });
       }
-    } catch (error) {
+    } catch (/* eslint-disable-next-line @typescript-eslint/no-unused-vars */ _error) {
       toast({
         variant: "destructive",
         title: "Error",

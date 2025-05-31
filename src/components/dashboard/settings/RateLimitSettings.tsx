@@ -1,7 +1,6 @@
 "use client";
 
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -9,18 +8,25 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { UseFormReturn } from "react-hook-form";
 
+// Keep this type definition for reference even if not used directly
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const securitySettingsSchema = z.object({
+  id: z.string(),
   rateLimitMaxRequests: z.coerce.number().int().min(1).max(10000),
   rateLimitWindowMs: z.coerce.number().int().min(1000).max(3600000),
+  maxPayloadSize: z.coerce.number().int().min(1024).max(100 * 1024 * 1024),
+  logRetentionDays: z.coerce.number().int().min(1).max(365),
   apiRateLimitEnabled: z.boolean(),
   webhookRateLimitEnabled: z.boolean(),
   ipWhitelist: z.array(z.string()),
+  enableDetailedErrorLogs: z.boolean(),
 });
 
 type RateLimitSettingsProps = {
-  form: any; // The React Hook Form instance
+  // Use a specific type based on the schema
+  form: UseFormReturn<z.infer<typeof securitySettingsSchema>>; // The React Hook Form instance
   newIpAddress: string;
   setNewIpAddress: (value: string) => void;
   addIpToWhitelist: () => void;

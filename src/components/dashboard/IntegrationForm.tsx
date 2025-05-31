@@ -25,8 +25,9 @@ import {
 import type { Integration, Platform, FieldFilterConfig } from "@/lib/types";
 import { platformOptions, getPlatformFormatDescription } from "@/lib/platform-helpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { WebhookUrlField } from "@/components/ui/webhook-url-field";
 import { Loader2 } from "lucide-react";
-import { useMemo, useEffect } from "react";
+import { useEffect } from "react";
 
 const integrationSchema = z.object({
   name: z.string().min(3, { message: "Name must be at least 3 characters." }).max(50),
@@ -154,7 +155,13 @@ export function IntegrationForm({
                 <FormItem>
                   <FormLabel>Webhook URL</FormLabel>
                   <FormControl>
-                    <Input type="url" placeholder="https://hooks.slack.com/services/..." {...field} />
+                    <WebhookUrlField
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="https://hooks.slack.com/services/..."
+                      disabled={isSubmitting}
+                      isFormField={true}
+                    />
                   </FormControl>
                   <FormDescription>The webhook URL provided by the platform.</FormDescription>
                   <FormMessage />

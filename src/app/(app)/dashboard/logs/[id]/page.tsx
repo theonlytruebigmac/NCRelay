@@ -8,15 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { format, parseISO } from "date-fns";
-import { CheckCircle, XCircle, HelpCircle, Trash2, ArrowLeft } from "lucide-react";
+import { CheckCircle, XCircle, HelpCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getLogByIdAction, deleteLogEntryAction } from "../actions";
 import { LogEntry, LoggedIntegrationAttempt } from "@/lib/types";
 import { getPlatformFormat, getPlatformFormatDescription } from "@/lib/platform-helpers";
+import { WebhookUrlField } from "@/components/ui/webhook-url-field";
 
 // Status icon components
 const IntegrationStatusIcon = ({ status }: { status: LoggedIntegrationAttempt['status'] }) => {
@@ -286,8 +286,13 @@ export default function LogDetailsPage() {
                     </div>
                     <div className="log-page-field">
                       <span className="log-page-label">Webhook URL:</span> 
-                      <div className="log-page-code-container">
-                        <code className="log-page-code">{attempt.webhookUrl}</code>
+                      <div className="mt-2">
+                        <WebhookUrlField
+                          value={attempt.webhookUrl}
+                          disabled={true}
+                          showCopyButton={true}
+                          className="font-mono text-xs"
+                        />
                       </div>
                     </div>
                     {attempt.errorDetails && (
@@ -306,10 +311,26 @@ export default function LogDetailsPage() {
                             language={getPlatformFormat(attempt.platform) === 'json' ? 'json' : 'xml'} 
                             style={atomDark} 
                             className="log-page-syntax"
-                            wrapLines={false}
+                            wrapLines={true}
+                            wrapLongLines={true}
                             showLineNumbers={true}
+                            customStyle={{
+                              maxWidth: '100%',
+                              overflowX: 'auto',
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word'
+                            }}
                           >
-                            {attempt.outgoingPayload}
+                            {(() => {
+                              if (getPlatformFormat(attempt.platform) === 'json') {
+                                try {
+                                  return JSON.stringify(JSON.parse(attempt.outgoingPayload), null, 2);
+                                } catch (e) {
+                                  return attempt.outgoingPayload;
+                                }
+                              }
+                              return attempt.outgoingPayload;
+                            })()}
                           </SyntaxHighlighter>
                         </div>
                        </div>

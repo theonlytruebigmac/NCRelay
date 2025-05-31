@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,8 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
-import { Logo } from "@/components/icons/Logo";
+import { useCallback, useState } from "react";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 
@@ -37,7 +35,6 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -46,32 +43,43 @@ export function LoginForm() {
     },
   });
 
-  async function onSubmit(data: LoginFormValues) {
+  const onSubmit = useCallback(async (data: LoginFormValues) => {
     setIsLoading(true);
     setFormError(null);
     const formData = new FormData();
     formData.append('email', data.email);
     formData.append('password', data.password);
 
-    const result = await login(formData);
-    setIsLoading(false);
-
-    if (result.success) {
-      router.push("/dashboard");
-      toast({
-        title: "Login Successful",
-        description: "Welcome back!",
-      });
-    } else {
-      setFormError(result.error || "Invalid email or password. Please try again.");
+    try {
+      const result = await login(formData);
+      if (result.success) {
+        router.push("/dashboard");
+        toast({
+          title: "Login Successful",
+          description: "Welcome back!",
+        });
+      } else {
+        setFormError(result.error || "Invalid email or password. Please try again.");
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: result.error || "Invalid email or password. Please try again.",
+        });
+        form.resetField("password");
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+      setFormError(errorMessage);
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: result.error || "Invalid email or password. Please try again.",
+        description: errorMessage,
       });
       form.resetField("password");
+    } finally {
+      setIsLoading(false);
     }
-  }
+  }, [login, router, toast, form]);
 
   return (
     <Card className="w-full shadow-xl">
@@ -91,7 +99,7 @@ export function LoginForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="you@example.com" {...field} />
+                    <Input placeholder="you@example.com" type="email" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -118,10 +126,11 @@ export function LoginForm() {
           </form>
         </Form>
         <div className="mt-4 text-center text-sm">
-          <Link href="/forgot-password" legacyBehavior>
-            <a className="underline text-muted-foreground hover:text-primary">
-              Forgot password?
-            </a>
+          <Link 
+            href="/forgot-password" 
+            className="underline text-muted-foreground hover:text-primary"
+          >
+            Forgot password?
           </Link>
         </div>
       </CardContent>

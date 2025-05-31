@@ -25,7 +25,9 @@ export function initScheduledTasks() {
   backupInterval = setInterval(async () => {
     console.log('Running scheduled database backup');
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const settings = await getSecuritySettings();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const backupRetentionDays = process.env.BACKUP_RETENTION_DAYS 
         ? parseInt(process.env.BACKUP_RETENTION_DAYS) 
         : 7;

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { verifyAuthToken, getUserFromToken } from '@/lib/auth';
+import { getUserFromToken } from '@/lib/auth';
 import { cleanupOldLogs, getLogStats, createBackup } from '@/lib/log-manager';
 
 // Helper function to verify admin authentication

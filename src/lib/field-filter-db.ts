@@ -105,7 +105,7 @@ export async function updateFieldFilter(
   
   // Build update query dynamically based on provided fields
   const updates: string[] = ['updated_at = @now'];
-  const params: any = { now };
+  const params: Record<string, string | number | null> = { now };
   
   if (data.name !== undefined) {
     updates.push('name = @name');

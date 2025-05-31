@@ -1,12 +1,10 @@
 'use server';
 import Database from 'better-sqlite3';
-import type { Integration, ApiEndpointConfig, LogEntry, User, SmtpSettings, FieldFilterConfig } from './types';
+import type { Integration, ApiEndpointConfig, LogEntry, User, SmtpSettings, FieldFilterConfig, Platform } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { encrypt, decrypt } from './crypto';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { runMigrations } from '../migrations';
-import { getPlatformFormat } from './platform-helpers';
 
 const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/app.db' : 'app.db';
 const SMTP_SETTINGS_ID = 'default_settings';
@@ -14,9 +12,58 @@ const SMTP_SETTINGS_ID = 'default_settings';
 let db: Database.Database;
 let isInitialized = false;
 
+async function createBuildTimeSchema(tempDb: Database.Database) {
+  // Create minimal schema for build time
+  tempDb.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      name TEXT,
+      hashedPassword TEXT NOT NULL,
+      isAdmin INTEGER DEFAULT 0,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS security_settings (
+      id TEXT PRIMARY KEY,
+      rateLimitMaxRequests INTEGER NOT NULL,
+      rateLimitWindowMs INTEGER NOT NULL,
+      maxPayloadSize INTEGER NOT NULL,
+      logRetentionDays INTEGER NOT NULL,
+      apiRateLimitEnabled INTEGER NOT NULL,
+      webhookRateLimitEnabled INTEGER NOT NULL,
+      ipWhitelist TEXT NOT NULL,
+      enableDetailedErrorLogs INTEGER NOT NULL
+    );
+
+    -- Insert dummy admin user for build
+    INSERT OR IGNORE INTO users (id, email, name, hashedPassword, isAdmin, createdAt, updatedAt)
+    VALUES ('build-admin', 'admin@build.local', 'Build Admin', 'dummy-hash', 1, '2025-01-01', '2025-01-01');
+
+    -- Insert dummy security settings for build
+    INSERT OR IGNORE INTO security_settings (
+      id, rateLimitMaxRequests, rateLimitWindowMs, maxPayloadSize, 
+      logRetentionDays, apiRateLimitEnabled, webhookRateLimitEnabled, 
+      ipWhitelist, enableDetailedErrorLogs
+    ) VALUES (
+      'default_security_settings', 100, 60000, 10485760, 
+      30, 1, 0, '[]', 0
+    );
+  `);
+  return tempDb;
+}
+
 export async function getDB(): Promise<Database.Database> {
   if (!db) {
     try {
+      // During build phase, use in-memory database with minimal schema
+      if (process.env.NEXT_PHASE === 'phase-production-build') {
+        const tempDb = new Database(':memory:');
+        await createBuildTimeSchema(tempDb);
+        return tempDb;
+      }
+
       db = new Database(DB_PATH, { /* verbose: console.log */ });
       db.pragma('journal_mode = WAL');
       
@@ -26,11 +73,12 @@ export async function getDB(): Promise<Database.Database> {
         isInitialized = true;
       }
     } catch (error) {
-      // During build, database might not be accessible - create a dummy database
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('Database not accessible during build, creating temporary database');
-        db = new Database(':memory:');
-        await initializeDBSchema();
+      // During development or when database is not accessible
+      if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PHASE === 'phase-production-build') {
+        console.warn('Database not accessible, using temporary in-memory database');
+        const tempDb = new Database(':memory:');
+        await createBuildTimeSchema(tempDb);
+        return tempDb;
       } else {
         throw error;
       }
@@ -45,7 +93,17 @@ async function initializeDBSchema() {
     // Run migrations on application startup
     // Note: For a production environment, you might want to run migrations
     // separately from your application startup (using npm run migrate)
-    await runMigrations();
+    
+    // Only run migrations in development
+    if (process.env.NODE_ENV === 'development') {
+      // Dynamic import to avoid bundling migrations in Next.js build
+      const { runMigrations } = await import('../migrations');
+      await runMigrations();
+    }
+    
+    // For production, migrations should be run separately using:
+    // npm run migrate
+    
   } catch (error) {
     console.error('Failed to run migrations during app startup:', error);
     // Don't throw - app should continue as migration CLI can be used to resolve issues
@@ -97,13 +155,13 @@ export async function initializeDatabase() {
 export async function getUserByEmail(email: string): Promise<(User & { hashedPassword?: string }) | null> {
   const db = await getDB();
   const stmt = db.prepare('SELECT * FROM users WHERE email = ?');
-  const row = stmt.get(email) as any;
+  const row = stmt.get(email) as Record<string, unknown> | undefined;
   if (!row) return null;
   return {
-    id: row.id,
-    email: row.email,
-    name: row.name,
-    hashedPassword: row.hashedPassword, 
+    id: row.id as string,
+    email: row.email as string,
+    name: row.name as string,
+    hashedPassword: row.hashedPassword as string, 
     isAdmin: !!row.isAdmin,
   };
 }
@@ -111,12 +169,12 @@ export async function getUserByEmail(email: string): Promise<(User & { hashedPas
 export async function getUserById(id: string): Promise<User | null> {
   const db = await getDB();
   const stmt = db.prepare('SELECT id, email, name, isAdmin FROM users WHERE id = ?');
-  const row = stmt.get(id) as any;
+  const row = stmt.get(id) as Record<string, unknown> | undefined;
   if (!row) return null;
   return {
-    id: row.id,
-    email: row.email,
-    name: row.name,
+    id: row.id as string,
+    email: row.email as string,
+    name: row.name as string,
     isAdmin: !!row.isAdmin,
   };
 }
@@ -181,26 +239,29 @@ export async function deletePasswordResetToken(token: string): Promise<boolean> 
 export async function getIntegrations(): Promise<Integration[]> {
   const db = await getDB();
   const stmt = db.prepare('SELECT * FROM integrations ORDER BY name ASC');
-  const rows = stmt.all() as any[];
+  const rows = stmt.all() as Record<string, unknown>[];
   return Promise.all(rows.map(async (row) => ({
     ...row,
+    id: row.id as string,
+    name: row.name as string,
+    platform: row.platform as Platform,
     enabled: !!row.enabled,
-    webhookUrl: await decrypt(row.webhookUrl)
+    webhookUrl: await decrypt(row.webhookUrl as string)
   })));
 }
 
 export async function getIntegrationById(id: string): Promise<Integration | null> {
   const db = await getDB();
   const stmt = db.prepare('SELECT * FROM integrations WHERE id = ?');
-  const row = stmt.get(id) as any;
+  const row = stmt.get(id) as Record<string, unknown> | undefined;
   if (!row) return null;
   return {
-    id: row.id,
-    name: row.name,
-    platform: row.platform,
-    webhookUrl: await decrypt(row.webhookUrl),
+    id: row.id as string,
+    name: row.name as string,
+    platform: row.platform as Platform,
+    webhookUrl: await decrypt(row.webhookUrl as string),
     enabled: !!row.enabled,
-    fieldFilterId: row.fieldFilterId || undefined
+    fieldFilterId: (row.fieldFilterId as string) || undefined
   };
 }
 
@@ -259,25 +320,43 @@ export async function deleteIntegration(id: string): Promise<boolean> {
 export async function getApiEndpoints(): Promise<ApiEndpointConfig[]> {
   const db = await getDB();
   const stmt = db.prepare('SELECT * FROM api_endpoints ORDER BY name ASC');
-  const rows = stmt.all() as ApiEndpointConfig[];
-   return rows.map(ep => ({
-    ...ep,
-    associatedIntegrationIds: JSON.parse(ep.associatedIntegrationIds as unknown as string || '[]')
+  const rows = stmt.all() as Record<string, unknown>[];
+  return rows.map(ep => ({
+    id: ep.id as string,
+    name: ep.name as string,
+    path: ep.path as string,
+    createdAt: ep.createdAt as string,
+    associatedIntegrationIds: JSON.parse(ep.associatedIntegrationIds as string || '[]'),
+    ipWhitelist: JSON.parse(ep.ipWhitelist as string || '[]')
   }));
 }
 
 export async function getApiEndpointById(id: string): Promise<ApiEndpointConfig | null> {
   const db = await getDB();
   const stmt = db.prepare('SELECT * FROM api_endpoints WHERE id = ?');
-  const row = stmt.get(id) as ApiEndpointConfig | null;
-  return row ? { ...row, associatedIntegrationIds: JSON.parse(row.associatedIntegrationIds as unknown as string || '[]') } : null;
+  const row = stmt.get(id) as Record<string, unknown> | undefined;
+  return row ? {
+    id: row.id as string,
+    name: row.name as string,
+    path: row.path as string,
+    createdAt: row.createdAt as string,
+    associatedIntegrationIds: JSON.parse(row.associatedIntegrationIds as string || '[]'),
+    ipWhitelist: JSON.parse(row.ipWhitelist as string || '[]')
+  } : null;
 }
 
 export async function getApiEndpointByPath(path: string): Promise<ApiEndpointConfig | null> {
   const db = await getDB();
   const stmt = db.prepare('SELECT * FROM api_endpoints WHERE path = ?');
-  const row = stmt.get(path) as ApiEndpointConfig | null;
-  return row ? { ...row, associatedIntegrationIds: JSON.parse(row.associatedIntegrationIds as unknown as string || '[]') } : null;
+  const row = stmt.get(path) as Record<string, unknown> | undefined;
+  return row ? {
+    id: row.id as string,
+    name: row.name as string,
+    path: row.path as string,
+    createdAt: row.createdAt as string,
+    associatedIntegrationIds: JSON.parse(row.associatedIntegrationIds as string || '[]'),
+    ipWhitelist: JSON.parse(row.ipWhitelist as string || '[]')
+  } : null;
 }
 
 export async function addApiEndpoint(endpoint: Omit<ApiEndpointConfig, 'id' | 'createdAt' | 'path'>): Promise<ApiEndpointConfig> {
@@ -287,21 +366,24 @@ export async function addApiEndpoint(endpoint: Omit<ApiEndpointConfig, 'id' | 'c
     path: uuidv4(), // Generate a secure random UUID for the path
     ...endpoint,
     associatedIntegrationIds: endpoint.associatedIntegrationIds || [],
+    ipWhitelist: endpoint.ipWhitelist || [],
     createdAt: new Date().toISOString(),
   };
   const stmt = db.prepare(
-    'INSERT INTO api_endpoints (id, name, path, associatedIntegrationIds, createdAt) VALUES (?, ?, ?, ?, ?)'
+    'INSERT INTO api_endpoints (id, name, path, associatedIntegrationIds, ipWhitelist, createdAt) VALUES (?, ?, ?, ?, ?, ?)'
   );
   stmt.run(
     newEndpoint.id,
     newEndpoint.name,
     newEndpoint.path,
     JSON.stringify(newEndpoint.associatedIntegrationIds),
+    JSON.stringify(newEndpoint.ipWhitelist),
     newEndpoint.createdAt
   );
    return {
     ...newEndpoint,
-    associatedIntegrationIds: newEndpoint.associatedIntegrationIds
+    associatedIntegrationIds: newEndpoint.associatedIntegrationIds,
+    ipWhitelist: newEndpoint.ipWhitelist
   };
 }
 
@@ -313,11 +395,12 @@ export async function updateApiEndpoint(id: string, endpoint: Partial<Omit<ApiEn
   const updatedEndpointData = { ...existing, ...endpoint, id };
 
   const stmt = db.prepare(
-    'UPDATE api_endpoints SET name = ?, associatedIntegrationIds = ? WHERE id = ?'
+    'UPDATE api_endpoints SET name = ?, associatedIntegrationIds = ?, ipWhitelist = ? WHERE id = ?'
   );
   stmt.run(
     updatedEndpointData.name,
     JSON.stringify(updatedEndpointData.associatedIntegrationIds || []), // Store as JSON string
+    JSON.stringify(updatedEndpointData.ipWhitelist || []), // Store as JSON string
     id
   );
   return getApiEndpointById(id); 
@@ -336,27 +419,27 @@ const MAX_LOG_ENTRIES = 50;
 export async function getRequestLogs(): Promise<LogEntry[]> {
   const db = await getDB();
   const stmt = db.prepare('SELECT * FROM request_logs ORDER BY timestamp DESC LIMIT ?');
-  const rows = stmt.all(MAX_LOG_ENTRIES) as any[];
+  const rows = stmt.all(MAX_LOG_ENTRIES) as Record<string, unknown>[];
 
   return Promise.all(rows.map(async (row) => {
-    const decryptedHeaders = await decrypt(row.incomingRequestHeaders);
-    const decryptedIntegrations = await decrypt(row.integrationAttempts);
-    const decryptedBodyRaw = await decrypt(row.incomingRequestBodyRaw);
+    const decryptedHeaders = await decrypt(row.incomingRequestHeaders as string);
+    const decryptedIntegrations = await decrypt(row.integrationAttempts as string);
+    const decryptedBodyRaw = await decrypt(row.incomingRequestBodyRaw as string);
     return {
-      id: row.id,
-      timestamp: row.timestamp,
-      apiEndpointId: row.apiEndpointId,
-      apiEndpointName: row.apiEndpointName,
-      apiEndpointPath: row.apiEndpointPath,
+      id: row.id as string,
+      timestamp: row.timestamp as string,
+      apiEndpointId: row.apiEndpointId as string,
+      apiEndpointName: row.apiEndpointName as string,
+      apiEndpointPath: row.apiEndpointPath as string,
       incomingRequest: {
-        ip: row.incomingRequestIp,
-        method: row.incomingRequestMethod,
+        ip: row.incomingRequestIp as string | null,
+        method: row.incomingRequestMethod as string,
         headers: JSON.parse(decryptedHeaders || '{}'),
         bodyRaw: decryptedBodyRaw,
       },
       processingSummary: {
-        overallStatus: row.processingOverallStatus,
-        message: row.processingMessage,
+        overallStatus: row.processingOverallStatus as 'success' | 'partial_failure' | 'total_failure' | 'no_integrations_triggered',
+        message: row.processingMessage as string,
       },
       integrations: JSON.parse(decryptedIntegrations || '[]'),
     };
@@ -490,13 +573,17 @@ export async function getDashboardStats(): Promise<{
 export async function getSmtpSettings(): Promise<SmtpSettings | null> {
   const db = await getDB();
   const stmt = db.prepare('SELECT * FROM smtp_settings WHERE id = ?');
-  const row = stmt.get(SMTP_SETTINGS_ID) as any;
+  const row = stmt.get(SMTP_SETTINGS_ID) as Record<string, unknown> | undefined;
   if (!row) return null;
   return {
-    ...row,
-    password: row.password ? await decrypt(row.password) : undefined,
+    id: row.id as string,
+    host: row.host as string,
+    port: Number(row.port),
+    user: row.user as string,
+    password: row.password ? await decrypt(row.password as string) : undefined,
     secure: !!row.secure,
-    port: Number(row.port)
+    fromEmail: row.fromEmail as string,
+    appBaseUrl: row.appBaseUrl as string
   };
 }
 
@@ -567,19 +654,19 @@ export async function getFieldFilter(id: string): Promise<FieldFilterConfig | nu
   const db = await getDB();
   
   const stmt = db.prepare(`SELECT * FROM field_filters WHERE id = ?`);
-  const row = stmt.get(id) as any;
+  const row = stmt.get(id) as Record<string, unknown> | undefined;
   
   if (!row) return null;
   
   return {
-    id: row.id,
-    name: row.name,
-    includedFields: JSON.parse(row.included_fields),
-    excludedFields: JSON.parse(row.excluded_fields),
-    description: row.description,
-    sampleData: row.sample_data,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
+    id: row.id as string,
+    name: row.name as string,
+    includedFields: JSON.parse(row.included_fields as string),
+    excludedFields: JSON.parse(row.excluded_fields as string),
+    description: row.description as string | undefined,
+    sampleData: row.sample_data as string | undefined,
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string
   };
 }
 
@@ -590,17 +677,17 @@ export async function getFieldFilters(): Promise<FieldFilterConfig[]> {
   const db = await getDB();
   
   const stmt = db.prepare(`SELECT * FROM field_filters ORDER BY name ASC`);
-  const rows = stmt.all() as any[];
+  const rows = stmt.all() as Record<string, unknown>[];
   
-  return rows.map((row: any) => ({
-    id: row.id,
-    name: row.name,
-    includedFields: JSON.parse(row.included_fields),
-    excludedFields: JSON.parse(row.excluded_fields),
-    description: row.description,
-    sampleData: row.sample_data,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
+  return rows.map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+    includedFields: JSON.parse(row.included_fields as string),
+    excludedFields: JSON.parse(row.excluded_fields as string),
+    description: row.description as string | undefined,
+    sampleData: row.sample_data as string | undefined,
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string
   }));
 }
 
@@ -615,8 +702,8 @@ export async function updateFieldFilter(
   const now = new Date().toISOString();
   
   // Build update query dynamically based on provided fields
-  let updateFields: string[] = ['updated_at = ?'];
-  let params: any[] = [now];
+  const updateFields: string[] = ['updated_at = ?'];
+  const params: Array<string | number | null> = [now];
   
   if (data.name !== undefined) {
     updateFields.push('name = ?');
@@ -682,31 +769,31 @@ export async function deleteFieldFilter(id: string): Promise<boolean> {
 export async function getRequestLogById(logId: string): Promise<LogEntry | null> {
   const db = await getDB();
   const stmt = db.prepare('SELECT * FROM request_logs WHERE id = ?');
-  const row = stmt.get(logId) as any;
+  const row = stmt.get(logId) as Record<string, unknown> | undefined;
 
   if (!row) {
     return null;
   }
 
-  const decryptedHeaders = await decrypt(row.incomingRequestHeaders);
-  const decryptedIntegrations = await decrypt(row.integrationAttempts);
-  const decryptedBodyRaw = await decrypt(row.incomingRequestBodyRaw);
+  const decryptedHeaders = await decrypt(row.incomingRequestHeaders as string);
+  const decryptedIntegrations = await decrypt(row.integrationAttempts as string);
+  const decryptedBodyRaw = await decrypt(row.incomingRequestBodyRaw as string);
   
   return {
-    id: row.id,
-    timestamp: row.timestamp,
-    apiEndpointId: row.apiEndpointId,
-    apiEndpointName: row.apiEndpointName,
-    apiEndpointPath: row.apiEndpointPath,
+    id: row.id as string,
+    timestamp: row.timestamp as string,
+    apiEndpointId: row.apiEndpointId as string,
+    apiEndpointName: row.apiEndpointName as string,
+    apiEndpointPath: row.apiEndpointPath as string,
     incomingRequest: {
-      ip: row.incomingRequestIp,
-      method: row.incomingRequestMethod,
+      ip: row.incomingRequestIp as string | null,
+      method: row.incomingRequestMethod as string,
       headers: JSON.parse(decryptedHeaders || '{}'),
       bodyRaw: decryptedBodyRaw,
     },
     processingSummary: {
-      overallStatus: row.processingOverallStatus,
-      message: row.processingMessage,
+      overallStatus: row.processingOverallStatus as 'success' | 'partial_failure' | 'total_failure' | 'no_integrations_triggered',
+      message: row.processingMessage as string,
     },
     integrations: JSON.parse(decryptedIntegrations || '[]'),
   };

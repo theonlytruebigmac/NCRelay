@@ -2,22 +2,13 @@
 
 import { PageShell } from "@/components/layout/PageShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, Save, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SecuritySettings } from "@/lib/types";
-import { 
-  Form, 
-  FormControl, 
-  FormDescription, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
-} from "@/components/ui/form";
+import type { SecuritySettings } from "@/lib/types";
+import { Form } from "@/components/ui/form";
 import { getSecuritySettingsAction, updateSecuritySettingsAction } from "./actions";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -28,6 +19,7 @@ import { LoggingSettings } from "@/components/dashboard/settings/LoggingSettings
 
 // Schema for validating security settings
 const securitySettingsSchema = z.object({
+  id: z.string().default('default_security_settings'),
   rateLimitMaxRequests: z.coerce.number().int().min(1).max(10000),
   rateLimitWindowMs: z.coerce.number().int().min(1000).max(3600000),
   maxPayloadSize: z.coerce.number().int().min(1024).max(100 * 1024 * 1024), // 1KB to 100MB
@@ -41,13 +33,16 @@ const securitySettingsSchema = z.object({
 export default function SecuritySettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [securitySettings, setSecuritySettings] = useState<SecuritySettings | null>(null);
+  // We're using this state for tracking when settings were loaded 
+  // and when form needs to be reset
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [newIpAddress, setNewIpAddress] = useState("");
   const { toast } = useToast();
   
   const form = useForm<z.infer<typeof securitySettingsSchema>>({
     resolver: zodResolver(securitySettingsSchema),
     defaultValues: {
+      id: 'default_security_settings',
       rateLimitMaxRequests: 100,
       rateLimitWindowMs: 60000,
       maxPayloadSize: 10485760,
@@ -63,7 +58,7 @@ export default function SecuritySettingsPage() {
     setIsLoading(true);
     try {
       const settings = await getSecuritySettingsAction();
-      setSecuritySettings(settings);
+      setSettingsLoaded(true);
       form.reset({
         rateLimitMaxRequests: settings.rateLimitMaxRequests,
         rateLimitWindowMs: settings.rateLimitWindowMs,
@@ -88,6 +83,7 @@ export default function SecuritySettingsPage() {
 
   useEffect(() => {
     fetchSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onSubmit = async (data: z.infer<typeof securitySettingsSchema>) => {

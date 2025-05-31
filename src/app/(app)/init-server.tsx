@@ -1,5 +1,3 @@
-import { ReactNode } from 'react';
-
 // Import this code only on the server side
 import { headers } from 'next/headers';
 

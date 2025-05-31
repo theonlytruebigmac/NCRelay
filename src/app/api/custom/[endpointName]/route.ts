@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import type { LogEntry, Integration, ApiEndpointConfig, LoggedIntegrationAttempt, FieldFilterConfig } from '@/lib/types';
-import { getIntegrations, getApiEndpointByPath, getFieldFilter, addRequestLog } from '@/lib/db';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import type { LogEntry, LoggedIntegrationAttempt, FieldFilterConfig } from '@/lib/types';
 import { processXmlWithFieldFilter } from '@/lib/field-filter-processor';
-import { parseXmlToJson, getClientIP } from '@/lib/utils';
-import { getPlatformFormat } from '@/lib/platform-helpers';
+import { parseXmlToJson, getClientIP, isIPAllowedForEndpoint } from '@/lib/utils';
 
-// Let's use the direct parameter structure to satisfy Next.js App Router constraints
-// Instead of defining a custom type
+// Type definitions
+type ExtractedData = Record<string, unknown>;
 
+// Platform-specific interfaces
 interface TeamsFactSet {
   type: 'FactSet';
   facts: Array<{
@@ -40,17 +40,10 @@ interface TeamsAdaptiveCard {
   body: Array<TeamsContainer | TeamsTextBlock>;
 }
 
-interface TeamsWebhookPayload {
-  type: 'message';
-  attachments: Array<{
-    contentType: 'application/vnd.microsoft.card.adaptive';
-    content: TeamsAdaptiveCard;
-  }>;
-}
-
-function getStatusColor(data: any): string {
-  const status = (data.Status || data.status || data.QualitativeNewState || '').toLowerCase();
-  const severity = (data.Severity || data.severity || '').toLowerCase();
+// Helper functions
+function getStatusColor(data: ExtractedData): string {
+  const status = ((data.Status || data.status || data.QualitativeNewState || '') + '').toLowerCase();
+  const severity = ((data.Severity || data.severity || '') + '').toLowerCase();
 
   if (status.includes('error') || status.includes('failed') || severity.includes('critical')) {
     return 'attention';
@@ -63,7 +56,7 @@ function getStatusColor(data: any): string {
   return 'default';
 }
 
-function createTeamsCard(data: Record<string, any>, fieldFilter?: FieldFilterConfig | null): TeamsAdaptiveCard {
+function createTeamsCard(data: ExtractedData, fieldFilter: FieldFilterConfig | null = null): TeamsAdaptiveCard {
   const baseCard: TeamsAdaptiveCard = {
     type: "AdaptiveCard",
     $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
@@ -82,7 +75,7 @@ function createTeamsCard(data: Record<string, any>, fieldFilter?: FieldFilterCon
   };
 
   // Create facts array from filtered data
-  const facts = [];
+  const facts: Array<{ title: string; value: string }> = [];
   if (fieldFilter) {
     // Use only included fields from the filter
     for (const field of fieldFilter.includedFields) {
@@ -123,6 +116,7 @@ function createTeamsCard(data: Record<string, any>, fieldFilter?: FieldFilterCon
   return baseCard;
 }
 
+// Route handlers
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ endpointName: string }> }
@@ -148,7 +142,8 @@ export async function POST(
   let xmlPayload = "";
   try {
     xmlPayload = await request.text();
-  } catch (e) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (_e) {
     const errorLogEntry: Omit<LogEntry, 'id' | 'timestamp'> = {
         apiEndpointId: "unknown",
         apiEndpointName: "unknown",
@@ -209,6 +204,30 @@ export async function POST(
     
     currentLogEntryPartial.apiEndpointId = endpointConfig.id;
     currentLogEntryPartial.apiEndpointName = endpointConfig.name;
+
+    // Check IP whitelist for this specific endpoint
+    const clientIP = getClientIP(request);
+    if (!isIPAllowedForEndpoint(clientIP, endpointConfig.ipWhitelist || [])) {
+      console.log(`[${endpointConfig.name}] IP ${clientIP} not in endpoint whitelist`);
+      await addRequestLog({
+        ...currentLogEntryPartial,
+        processingSummary: { 
+          overallStatus: 'total_failure', 
+          message: `Access denied: IP ${clientIP} is not in the endpoint's whitelist.` 
+        },
+        integrations: []
+      });
+      return NextResponse.json({ 
+        error: 'Access denied: IP address not in whitelist for this endpoint' 
+      }, { 
+        status: 403,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, SOAPAction',
+        }
+      });
+    }
 
     const contentType = request.headers.get('content-type');
     // Allow various XML/SOAP content types that N-Central might send
@@ -440,8 +459,13 @@ export async function POST(
           console.error(`[${integration.name}] Webhook failed:`, currentAttempt.errorDetails);
         }
 
-      } catch (error) {
-        // ... existing error handling ...
+      } catch (processingError) {
+        // Handle error in webhook delivery
+        currentAttempt.status = 'failed_transformation';
+        currentAttempt.errorDetails = processingError instanceof Error 
+          ? processingError.message 
+          : 'Unknown error during webhook transformation';
+        console.error(`[${integration.name}] Error processing webhook:`, currentAttempt.errorDetails);
       }
     }
     
@@ -556,7 +580,7 @@ export async function GET(
   });
 }
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {
@@ -565,95 +589,4 @@ export async function OPTIONS(request: NextRequest) {
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, SOAPAction',
     },
   });
-}
-
-/**
- * Creates a Discord embed with rich formatting based on extracted data
- */
-function createDiscordEmbed(title: string, description: string | null, extracted: Record<string, string>): any {
-  // Determine color based on status (red for critical, yellow for warning, green for okay)
-  let color = 5763719; // Green
-  const statusFields = [
-    'Status', 'status', 'QualitativeNewState', 'State', 'state', 
-    'Level', 'level', 'Severity', 'severity', 'QualitativeNewStatus'
-  ];
-  
-  for (const field of statusFields) {
-    if (extracted[field]) {
-      const status = extracted[field].toLowerCase();
-      if (status.includes('crit') || status.includes('error') || status.includes('fail')) {
-        color = 15548997; // Red
-        break;
-      } else if (status.includes('warn')) {
-        color = 16776960; // Yellow
-        break;
-      }
-    }
-  }
-
-  // Build Discord embed
-  const embed: any = {
-    title: title || "N-central Notification",
-    description: description || "Alert notification from N-central",
-    color: color,
-    fields: [],
-    timestamp: new Date().toISOString()
-  };
-
-  // Add thumbnail if there's an image URL
-  if (extracted.ImageUrl || extracted.imageUrl || extracted.image_url) {
-    embed.thumbnail = {
-      url: extracted.ImageUrl || extracted.imageUrl || extracted.image_url
-    };
-  }
-
-  // Add footer with software info
-  embed.footer = {
-    text: "NCRelay Notification System"
-  };
-
-  // Convert extracted data to fields (up to 25 fields max for Discord)
-  const fieldsToAdd = Object.entries(extracted)
-    .filter(([key, value]) => {
-      // Skip image URL and keys that are already represented elsewhere
-      if (key === 'ImageUrl' || key === 'imageUrl' || key === 'image_url') return false;
-      if (!value || value === '') return false;
-      return true;
-    })
-    .map(([key, value]) => {
-      // Format the value
-      let formattedValue = String(value);
-      // If it's a long string, truncate it
-      if (formattedValue.length > 1000) {
-        formattedValue = formattedValue.substring(0, 997) + '...';
-      }
-      
-      // Determine if this field should be inline
-      // Short fields look better inline, long ones should be full width
-      const inline = formattedValue.length < 80;
-      
-      return {
-        name: key,
-        value: formattedValue,
-        inline: inline
-      };
-    });
-
-  // Add fields in batches of 25 max (Discord limit)
-  embed.fields = fieldsToAdd.slice(0, 25);
-  
-  // Add a remote access link if available
-  if (extracted.RemoteControlLink || extracted.remoteControlLink || extracted.Link) {
-    const link = extracted.RemoteControlLink || extracted.remoteControlLink || extracted.Link;
-    if (link && link.startsWith('http')) {
-      // Add as an explicit field at the beginning for visibility
-      embed.fields.unshift({
-        name: "Remote Access",
-        value: `[Click here to access](${link})`,
-        inline: true
-      });
-    }
-  }
-  
-  return embed;
 }

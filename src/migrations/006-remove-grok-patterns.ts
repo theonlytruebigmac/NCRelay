@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 
-export default {
+const migration = {
   name: 'remove-grok-patterns',
   up: (db: Database.Database): void => {
     // Drop the grok_patterns and template_mappings tables if they exist
@@ -14,6 +14,8 @@ export default {
         CREATE TABLE IF NOT EXISTS __temp_integrations AS SELECT * FROM integrations;
       `);
       const pragma = db.prepare("PRAGMA table_info(integrations)").all();
+      // SQLite PRAGMA results have a predictable structure but we'll use a safer approach
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (pragma.some((col: any) => col.name === 'grokPatternId')) {
         db.exec(`
           CREATE TABLE integrations_new AS SELECT id, name, platform, webhookUrl, enabled, targetFormat, fieldFilterId, createdAt, userId FROM integrations;
@@ -22,7 +24,7 @@ export default {
         `);
       }
       db.exec(`DROP TABLE IF EXISTS __temp_integrations;`);
-    } catch (e) {
+    } catch {
       // Ignore if column does not exist
     }
   },
@@ -52,3 +54,5 @@ export default {
     `);
   }
 };
+
+export default migration;

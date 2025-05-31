@@ -7,7 +7,7 @@ import * as db from '@/lib/db';
 import type { User } from '@/lib/types';
 import { sendPasswordResetEmail } from '@/lib/email';
 import { revalidatePath } from 'next/cache';
-import { setAuthCookie, removeAuthCookie, getCurrentUser } from '@/lib/auth';
+import { setAuthCookie, removeAuthCookie } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
 const loginSchema = z.object({

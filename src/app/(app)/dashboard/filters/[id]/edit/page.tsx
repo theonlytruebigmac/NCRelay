@@ -23,10 +23,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { updateFieldFilterAction, getFieldFilterByIdAction } from "../../actions";
+import { updateFieldFilterAction, getFieldFilterByIdAction } from "@/app/(app)/dashboard/filters/actions";
 import { Loader2, Play, Filter, ListFilter } from "lucide-react";
 import { BackButton } from "@/components/layout/BackButton";
-import type { FieldFilterConfig } from "@/lib/types";
 
 const formSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters.").max(50, "Name must not exceed 50 characters."),
@@ -44,8 +43,10 @@ interface FieldData {
 export default function EditFieldFilterPage() {
   const router = useRouter();
   const params = useParams();
-  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const id = typeof params?.id === 'string' ? params.id : Array.isArray(params?.id) ? params.id[0] : null;
   const { toast } = useToast();
+
+
   
   const [xmlInput, setXmlInput] = useState("");
   const [extractedFields, setExtractedFields] = useState<FieldData[]>([]);
@@ -62,20 +63,6 @@ export default function EditFieldFilterPage() {
       excludedFields: [],
     },
   });
-
-  useEffect(() => {
-    if (!id) {
-      toast({
-        title: "Error",
-        description: "No filter ID provided",
-        variant: "destructive",
-      });
-      router.push("/dashboard/filters");
-      return;
-    }
-    
-    loadFieldFilter();
-  }, [id, router, toast]);
 
   const loadFieldFilter = async () => {
     if (!id) return;
@@ -115,6 +102,22 @@ export default function EditFieldFilterPage() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    console.log('Edit page mounted, id:', id);
+    if (!id) {
+      toast({
+        title: "Error",
+        description: "No filter ID provided",
+        variant: "destructive",
+      });
+      router.push("/dashboard/filters");
+      return;
+    }
+    
+    loadFieldFilter();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const extractFieldsFromXml = async (xml: string, included: string[] = []) => {
     setIsExtracting(true);
@@ -355,7 +358,9 @@ export default function EditFieldFilterPage() {
                 
                 <TabsContent value="test" className="space-y-4">
                   <div className="space-y-2">
-                    <FormLabel>Sample XML</FormLabel>
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Sample XML
+                    </label>
                     <Textarea 
                       value={xmlInput}
                       onChange={(e) => setXmlInput(e.target.value)}
@@ -425,7 +430,7 @@ export default function EditFieldFilterPage() {
                         
                         {extractedFields.length === 0 && (
                           <div className="text-center py-8 text-muted-foreground">
-                            No fields extracted. Try the "Extract Fields" button with sample XML.
+                            No fields extracted. Try the &quot;Extract Fields&quot; button with sample XML.
                           </div>
                         )}
                       </div>

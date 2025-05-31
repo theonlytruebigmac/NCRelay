@@ -1,5 +1,5 @@
 
-import { Cog, LayoutDashboard, Rss, Waypoints, History, ShieldCheck, Filter } from 'lucide-react';
+import { LayoutDashboard, Rss, Waypoints, History, ShieldCheck, Filter } from 'lucide-react';
 
 export type NavItem = {
   title: string;

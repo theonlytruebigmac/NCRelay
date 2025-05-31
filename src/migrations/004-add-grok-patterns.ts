@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 
-export default {
+const migration = {
   name: 'add-grok-patterns',
   up: (db: Database.Database): void => {
     // Create the grok patterns table
@@ -48,3 +48,5 @@ export default {
     `);
   }
 };
+
+export default migration;

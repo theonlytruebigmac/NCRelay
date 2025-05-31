@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 
-export default {
+const migration = {
   name: 'initial-schema',
   up: (db: Database.Database): void => {
     // Create users table
@@ -96,3 +96,5 @@ export default {
     `);
   }
 };
+
+export default migration;

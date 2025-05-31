@@ -6,7 +6,7 @@ import Database from 'better-sqlite3';
  * the targetFormat field is redundant and has been replaced with 
  * platform-based format determination.
  */
-export default {
+const migration = {
   name: 'remove-target-format',
   
   up: (db: Database.Database): void => {
@@ -130,3 +130,5 @@ export default {
     }
   }
 };
+
+export default migration;

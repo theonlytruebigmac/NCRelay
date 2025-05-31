@@ -26,7 +26,7 @@ export function DeleteFilterDialog({
       await deleteFieldFilterAction(filterId);
       toast({
         title: "Filter deleted",
-        description: `"${filterName}" has been deleted successfully.`
+        description: `&quot;${filterName}&quot; has been deleted successfully.`
       });
       setOpen(false);
       router.push("/dashboard/filters");
@@ -54,7 +54,7 @@ export function DeleteFilterDialog({
         <DialogHeader>
           <DialogTitle>Delete Field Filter</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete the field filter "{filterName}"? This action cannot be undone.
+            Are you sure you want to delete the field filter &quot;{filterName}&quot;? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

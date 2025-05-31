@@ -86,6 +86,7 @@ export default function LogsPageClient() {
   // Initial load
   useEffect(() => {
     fetchLogs();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-refresh polling

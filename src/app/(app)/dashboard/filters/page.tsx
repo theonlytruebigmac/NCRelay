@@ -31,13 +31,14 @@ export default function FilterListPage() {
 
   useEffect(() => {
     loadFilters();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadFilters() {
     try {
       const data = await getFieldFiltersAction();
       setFilters(data);
-    } catch (error) {
+    } catch (/* eslint-disable-next-line @typescript-eslint/no-unused-vars */ error) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -59,7 +60,7 @@ export default function FilterListPage() {
         title: "Success",
         description: "Field filter deleted successfully.",
       });
-    } catch (error) {
+    } catch (/* eslint-disable-next-line @typescript-eslint/no-unused-vars */ error) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -184,8 +185,16 @@ export default function FilterListPage() {
                       size="sm"
                       asChild
                     >
-                      <Link href={`/dashboard/filters/${filter.id}/edit`}>
+                      <Link 
+                        href={`/dashboard/filters/${filter.id}/edit`} 
+                        className="flex items-center gap-2"
+                        onClick={(e) => {
+                          console.log('Edit button clicked for filter:', filter.id);
+                          // Don't prevent default - let the navigation happen
+                        }}
+                      >
                         <Edit3 className="h-4 w-4" />
+                        <span>Edit</span>
                       </Link>
                     </Button>
                     <Button

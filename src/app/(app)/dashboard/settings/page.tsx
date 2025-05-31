@@ -14,7 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { SmtpSettingsForm } from "@/components/dashboard/settings/SmtpSettingsForm";
 import { getSmtpSettingsAction } from "./smtp/actions";
@@ -44,6 +43,7 @@ export default function GeneralSettingsPage() {
 
   useEffect(() => {
     fetchSmtpSettings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSmtpFormSubmit = () => {
