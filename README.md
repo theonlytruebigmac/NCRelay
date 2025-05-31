@@ -169,8 +169,6 @@ When creating or editing an integration:
 
 #### Example: N-Central Alert Filtering
 
-![NCRelay Logging Screenshot](docs/img/field_filter.png)
-
 **Original XML**:
 ```xml
 <?xml version="1.0"?>
