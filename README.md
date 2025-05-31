@@ -104,7 +104,7 @@ The database schema is automatically initialized on first run.
    - **Webhook URL**: The destination URL for notifications
    - **Target Format**: How to transform XML data (JSON, Text, or XML)
 
-![NCRelay Integration Screenshot](.docs/img/integration.png)
+![NCRelay Integration Screenshot](docs/img/integration.png)
 
 ### Setting up API Endpoints
 
@@ -116,7 +116,7 @@ The database schema is automatically initialized on first run.
    - **IP Address Whitelist**: (Optional) Restrict access to specific IP addresses
 4. Use the generated secure UUID path for your endpoint
 
-![NCRelay API Endpoint Screenshot](.docs/img/api_endpoint.png)
+![NCRelay API Endpoint Screenshot](docs/img/api_endpoint.png)
 
 ### IP Address Whitelisting
 
@@ -135,7 +135,7 @@ For enhanced security, you can restrict endpoint access to specific IP addresses
 ```
 
 ![NCRelay Security Settings Screenshot](.docs/img/logging.png)
-![NCRelay Logging Screenshot](.docs/img/security_settings.png)
+![NCRelay Logging Screenshot](docs/img/security_settings.png)
 
 ### Field Filtering
 
@@ -150,7 +150,7 @@ NCRelay provides powerful field filtering capabilities to extract and transform 
 5. **Select Fields**: Choose which fields to include or exclude using checkboxes
 6. **Save Configuration**: Give your filter a name and description
 
-![NCRelay Field Filter Screenshot](.docs/img/field_filter.png)
+![NCRelay Field Filter Screenshot](docs/img/field_filter.png)
 
 #### Benefits of Field Filters
 
@@ -169,7 +169,7 @@ When creating or editing an integration:
 
 #### Example: N-Central Alert Filtering
 
-![NCRelay Logging Screenshot](.docs/img/field_filter.png)
+![NCRelay Logging Screenshot](docs/img/field_filter.png)
 
 **Original XML**:
 ```xml
@@ -207,7 +207,7 @@ If you're upgrading from Grok patterns:
 
 1. **Backward Compatible**: Existing Grok patterns continue to work
 2. **Recommended Migration**: Use field filters for new setups
-3. **Migration Guide**: See [Field Filter Migration Documentation](./docs/migrating-to-field-filters.md)
+3. **Migration Guide**: See [Field Filter Migration Documentation](/docs/migrating-to-field-filters.md)
 
 
 ### Sending Notifications
