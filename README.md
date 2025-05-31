@@ -4,13 +4,15 @@
 
 NCRelay is a powerful notification relay service that receives XML data via custom API endpoints and forwards it to various messaging platforms like Slack, Discord, Microsoft Teams, and generic webhooks. Built with Next.js 15 and SQLite, it provides a secure, self-hosted solution for managing notification workflows.
 
+![NCRelay Dashboard Screenshot](.docs/img/dashboard.png)
+
 ## 🚀 Features
 
 - **Custom API Endpoints**: Create custom API paths to receive XML notifications
 - **IP Address Whitelisting**: Restrict endpoint access to specific IP addresses for enhanced security
 - **Multi-Platform Support**: Integrate with Slack, Discord, Microsoft Teams, and generic webhooks
 - **Flexible Data Transformation**: Convert XML to JSON, plain text, or keep as XML
-- **Field Filtering**: Extract and filter specific fields from XML notifications
+- **Advanced Field Filtering**: Visual field selection and extraction from XML without regex knowledge
 - **Secure Authentication**: User management with bcrypt password hashing
 - **Comprehensive Logging**: Track all requests and relay attempts with detailed logs
 - **Intuitive Dashboard**: Clean, modern UI for managing integrations and monitoring
@@ -102,6 +104,8 @@ The database schema is automatically initialized on first run.
    - **Webhook URL**: The destination URL for notifications
    - **Target Format**: How to transform XML data (JSON, Text, or XML)
 
+![NCRelay Integration Screenshot](.docs/img/integration.png)
+
 ### Setting up API Endpoints
 
 1. Go to **Dashboard → Settings → API Endpoints**
@@ -111,6 +115,8 @@ The database schema is automatically initialized on first run.
    - **Associated Integrations**: Select which integrations to trigger
    - **IP Address Whitelist**: (Optional) Restrict access to specific IP addresses
 4. Use the generated secure UUID path for your endpoint
+
+![NCRelay API Endpoint Screenshot](.docs/img/api_endpoint.png)
 
 ### IP Address Whitelisting
 
@@ -127,6 +133,82 @@ For enhanced security, you can restrict endpoint access to specific IP addresses
 192.168.1.50
 10.0.0.100
 ```
+
+![NCRelay Security Settings Screenshot](.docs/img/logging.png)
+![NCRelay Logging Screenshot](.docs/img/security_settings.png)
+
+### Field Filtering
+
+NCRelay provides powerful field filtering capabilities to extract and transform specific data from XML notifications before forwarding them to integrations.
+
+#### Creating Field Filters
+
+1. **Navigate to Field Filters**: Go to **Dashboard → Field Filters**
+2. **Create New Filter**: Click **Add Field Filter**
+3. **Upload Sample XML**: Paste a sample XML notification from your source system
+4. **Extract Fields**: Click "Extract Fields" to automatically identify all available fields
+5. **Select Fields**: Choose which fields to include or exclude using checkboxes
+6. **Save Configuration**: Give your filter a name and description
+
+![NCRelay Field Filter Screenshot](.docs/img/field_filter.png)
+
+#### Benefits of Field Filters
+
+- **No Regular Expression Knowledge Required**: Visual field selection instead of complex regex patterns
+- **Consistent Data Extraction**: Reliable parsing regardless of XML structure variations
+- **Reusable Configurations**: Create once, use across multiple integrations
+- **Data Privacy**: Filter out sensitive information before forwarding
+
+#### Using Field Filters in Integrations
+
+When creating or editing an integration:
+
+1. **Select Field Filter**: Choose a previously created filter from the dropdown
+2. **Apply to Integration**: The filter will process all XML data for that integration
+3. **Test and Verify**: Send test notifications to ensure proper field extraction
+
+#### Example: N-Central Alert Filtering
+
+![NCRelay Logging Screenshot](.docs/img/field_filter.png)
+
+**Original XML**:
+```xml
+<?xml version="1.0"?>
+<notification>
+  <devicename>SERVER-01</devicename>
+  <alertmessage>High CPU Usage Detected</alertmessage>
+  <severity>high</severity>
+  <timestamp>2024-01-15T10:30:00Z</timestamp>
+  <internal_id>12345</internal_id>
+  <customer_name>Acme Corp</customer_name>
+</notification>
+```
+
+**After Field Filter** (excluding internal_id):
+```json
+{
+  "devicename": "SERVER-01",
+  "alertmessage": "High CPU Usage Detected", 
+  "severity": "high",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "customer_name": "Acme Corp"
+}
+```
+
+#### Field Filter vs Integration Processing
+
+- **Field Filters**: Applied first to extract/filter XML fields
+- **Integration Processing**: Applied second to format data for the target platform
+- **Combined**: Field filters + platform formatting = clean, targeted notifications
+
+#### Migration from Grok Patterns
+
+If you're upgrading from Grok patterns:
+
+1. **Backward Compatible**: Existing Grok patterns continue to work
+2. **Recommended Migration**: Use field filters for new setups
+3. **Migration Guide**: See [Field Filter Migration Documentation](./docs/migrating-to-field-filters.md)
+
 
 ### Sending Notifications
 
@@ -191,6 +273,7 @@ View detailed logs of all API requests:
 - **Password Hashing**: bcrypt with salt rounds
 - **Data Encryption**: Sensitive data encrypted at rest
 - **IP Address Whitelisting**: Restrict endpoint access to specific IP addresses
+- **Data Privacy**: Field filters prevent sensitive information from being forwarded
 - **Secure Endpoint Paths**: Random UUID paths prevent enumeration attacks
 - **Session Management**: Secure authentication system
 - **Input Validation**: XML parsing and validation
