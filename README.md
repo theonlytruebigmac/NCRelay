@@ -4,7 +4,7 @@
 
 NCRelay is a powerful notification relay service that receives XML data via custom API endpoints and forwards it to various messaging platforms like Slack, Discord, Microsoft Teams, and generic webhooks. Built with Next.js 15 and SQLite, it provides a secure, self-hosted solution for managing notification workflows.
 
-![NCRelay Dashboard Screenshot](.docs/img/dashboard.png)
+![NCRelay Dashboard Screenshot](docs/img/dashboard.png)
 
 ## 🚀 Features
 
