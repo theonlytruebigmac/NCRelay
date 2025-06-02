@@ -134,7 +134,7 @@ For enhanced security, you can restrict endpoint access to specific IP addresses
 10.0.0.100
 ```
 
-![NCRelay Security Settings Screenshot](.docs/img/logging.png)
+![NCRelay Security Settings Screenshot](docs/img/logging.png)
 ![NCRelay Logging Screenshot](docs/img/security_settings.png)
 
 ### Field Filtering
