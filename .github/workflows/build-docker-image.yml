@@ -3,16 +3,15 @@ name: Build and Push Docker Image
 on:
   push:
     branches:
+      - master
       - dev
-      - 'release/*'
-      - 'hotfix/*'
+      - 'release/v*.*.*'
     tags:
       - 'v*.*.*'
   pull_request:
     branches:
+      - master
       - dev
-      - 'release/*'
-      - 'hotfix/*'
 
 jobs:
   build:
@@ -25,32 +24,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Determine version and branch type
-        id: version_info
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Using version from package.json: $VERSION"
-          
-          # Determine branch type and extract version from branch name if applicable
-          BRANCH_NAME=${GITHUB_REF#refs/heads/}
-          BRANCH_TYPE="unknown"
-          BRANCH_VERSION=""
-          
-          if [[ "$BRANCH_NAME" == "dev" ]]; then
-            BRANCH_TYPE="dev"
-          elif [[ "$BRANCH_NAME" == release/* ]]; then
-            BRANCH_TYPE="release"
-            BRANCH_VERSION=${BRANCH_NAME#release/}
-          elif [[ "$BRANCH_NAME" == hotfix/* ]]; then
-            BRANCH_TYPE="hotfix"
-            BRANCH_VERSION=${BRANCH_NAME#hotfix/}
-          fi
-          
-          echo "branch_type=$BRANCH_TYPE" >> $GITHUB_OUTPUT
-          echo "branch_version=$BRANCH_VERSION" >> $GITHUB_OUTPUT
-          echo "Branch type: $BRANCH_TYPE, Branch version: $BRANCH_VERSION"
-      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
@@ -60,7 +33,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.CR_PAT }}
       
       - name: Extract metadata
         id: meta
@@ -68,26 +41,11 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            # For the dev branch
-            type=raw,value=dev,enable=${{ github.ref == format('refs/heads/{0}', 'dev') }}
-            
-            # For release branches
-            type=raw,value=${{ steps.version_info.outputs.branch_version }},enable=${{ steps.version_info.outputs.branch_type == 'release' }}
-            type=raw,value=release-${{ steps.version_info.outputs.branch_version }},enable=${{ steps.version_info.outputs.branch_type == 'release' }}
-            
-            # For hotfix branches
-            type=raw,value=${{ steps.version_info.outputs.branch_version }},enable=${{ steps.version_info.outputs.branch_type == 'hotfix' }}
-            type=raw,value=hotfix-${{ steps.version_info.outputs.branch_version }},enable=${{ steps.version_info.outputs.branch_type == 'hotfix' }}
-            
-            # For version tags
-            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-            
-            # Use package.json version for dev branch
-            type=raw,value=${{ steps.version_info.outputs.version }},enable=${{ github.ref == format('refs/heads/{0}', 'dev') }}
-            
-            # Add latest tag for dev branch
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'dev') }}
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
           labels: |
             org.opencontainers.image.title=NCRelay
             org.opencontainers.image.description=Securely relay notifications to your favorite platforms
@@ -103,6 +61,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            VERSION=${{ steps.version_info.outputs.version }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             VCS_REF=${{ github.sha }}

@@ -6,9 +6,11 @@ If you encounter issues with Docker image builds in GitHub Actions, here are som
 
 ### Permission Denied When Pushing to GHCR
 
+#### Common Error: "permission_denied: write_package"
+
 **Error message:**
 ```
-ERROR: failed to push ghcr.io/org/repo:tag: denied: installation not allowed to Write organization package
+ERROR: failed to push ghcr.io/theonlytruebigmac/ncrelay:1.0.0: denied: permission_denied: write_package
 ```
 
 **Solutions:**
@@ -19,6 +21,7 @@ ERROR: failed to push ghcr.io/org/repo:tag: denied: installation not allowed to 
    permissions:
      contents: read
      packages: write
+     id-token: write  # Add this for some authentication scenarios
    ```
 
 2. **Update Repository Settings:**
@@ -26,15 +29,37 @@ ERROR: failed to push ghcr.io/org/repo:tag: denied: installation not allowed to 
    - Navigate to Settings > Actions > General
    - Scroll to "Workflow permissions"
    - Select "Read and write permissions"
+   - Check "Allow GitHub Actions to create and approve pull requests"
    - Save changes
 
-3. **Organization Packages Settings:**
+3. **Link Package to Repository (First-Time Push):**
+   - If this is your first time pushing this package, you may need to manually link it:
+   - Make an initial push attempt (it will fail)
+   - Go to your GitHub profile > "Packages"
+   - Find the package that was partially created
+   - Go to package settings
+   - Connect it to your repository
+   - Try pushing again
+
+4. **Organization Packages Settings:**
    - Go to your organization settings
    - Navigate to Packages
    - Ensure "Enable improved container support" is checked
-   - Check that the repository has access in the "Package Creation" section
+   - Under "Package Creation", ensure your repository has access
+   - Check that the members pushing have sufficient permissions
 
-4. **Try Using a Personal Access Token:**
+5. **Use github.actor Instead of github.repository_owner:**
+   - Sometimes using `github.actor` works better for authentication:
+   ```yaml
+   - name: Login to GitHub Container Registry
+     uses: docker/login-action@v3
+     with:
+       registry: ghcr.io
+       username: ${{ github.actor }}
+       password: ${{ secrets.GITHUB_TOKEN }}
+   ```
+
+6. **Try Using a Personal Access Token:**
    - Create a PAT with the `write:packages` scope
    - Add it to repository secrets as `CR_PAT`
    - Update your workflow:
