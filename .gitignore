@@ -1,0 +1,42 @@
+
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Next.js
+/.next/
+/out/
+
+# Production
+/build
+
+# Misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+# Docker
+.dockerignore
+docker-compose.yml
+docker-compose.dev.yml
+# VSCode
+.vscode
+
+
+# SQLite database file
+app.db*
+app.db-shm
+app.db-wal
+
+# ignore environment files
+.env.local
+.env.production

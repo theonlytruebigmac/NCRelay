@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "module": "ESNext",
+    "target": "ES2020",
+    "moduleResolution": "bundler",
+    "outDir": "./dist/migrations",
+    "rootDir": "./src/migrations",
+    "declaration": false,
+    "sourceMap": false,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "verbatimModuleSyntax": false
+  },
+  "include": [
+    "src/migrations/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

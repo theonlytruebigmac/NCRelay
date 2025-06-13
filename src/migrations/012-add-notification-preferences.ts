@@ -1,0 +1,23 @@
+import Database from 'better-sqlite3';
+
+export const migration = {
+  name: '012-add-notification-preferences',
+  up(db: Database.Database) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS notification_preferences (
+        userId TEXT PRIMARY KEY,
+        emailNotifications BOOLEAN NOT NULL DEFAULT 1,
+        systemNotifications BOOLEAN NOT NULL DEFAULT 1,
+        importantOnly BOOLEAN NOT NULL DEFAULT 0,
+        failureNotificationsOnly BOOLEAN NOT NULL DEFAULT 1,
+        emailDigestFrequency TEXT NOT NULL DEFAULT 'never',
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL,
+        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+      );
+    `);
+  },
+  down(db: Database.Database) {
+    db.exec('DROP TABLE IF EXISTS notification_preferences;');
+  },
+};
