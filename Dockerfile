@@ -2,45 +2,42 @@
 ARG VERSION=dev
 ARG BUILD_DATE=unknown
 ARG VCS_REF=unknown
+ARG NODE_ENV=production
 
-# Multi-stage build for enhanced security
-FROM ubuntu:24.04 AS builder
-
-# Install Node.js from official repository
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates gnupg && \
-    mkdir -p /etc/apt/keyrings && \
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends nodejs && \
-    rm -rf /var/lib/apt/lists/*
+# ==== BUILD STAGE ====
+FROM node:20.11-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Install only the necessary build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 make g++ \
-    && rm -rf /var/lib/apt/lists/*
+# Install build dependencies for better-sqlite3 and other native modules
+RUN apk add --no-cache python3 make g++ sqlite sqlite-dev
 
-# Install dependencies with exact versions (production only)
+# Copy package files and install dependencies
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci && npm cache clean --force
 
 # Copy source files
 COPY . .
 
-# Build TypeScript files
-RUN npm run build
+# Build TypeScript files and create required directories
+RUN NODE_ENV=production npm run build && \
+    node scripts/fix-migration-imports.js && \
+    mkdir -p public dist/migrations dist/src/lib && \
+    \
+    # Copy the Docker-specific server.js stub
+    cp src/server-docker.js dist/src/server.js
 
-# Production stage - use minimal image
-FROM ubuntu:24.04
+# ==== PRODUCTION STAGE ====
+FROM node:20.11-alpine AS production
 
 # Import build arguments from root
 ARG VERSION
 ARG BUILD_DATE
 ARG VCS_REF
+ARG NODE_ENV
+ENV NODE_ENV=${NODE_ENV}
+ENV PORT=3000
 
 # Add version metadata to container
 LABEL org.opencontainers.image.version="${VERSION}" \
@@ -50,35 +47,28 @@ LABEL org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.description="Securely relay notifications to your favorite platforms" \
       org.opencontainers.image.source="https://github.com/theonlytruebigmac/ncrelay"
 
-# Install Node.js from official repository
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates gnupg && \
-    mkdir -p /etc/apt/keyrings && \
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
-    apt-get update
-
+# Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get install -y --no-install-recommends \
-    nodejs tini sqlite3 wget \
-    && rm -rf /var/lib/apt/lists/*
+# Install production dependencies
+RUN apk add --no-cache sqlite tini wget curl
 
-# Install dependencies
+# Copy package files and install only production dependencies
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --only=production && npm cache clean --force
 
-# Copy source files
-COPY . .
+# Copy built app from builder stage - only what's needed for runtime
+COPY --from=builder /app/.next /app/.next
+COPY --from=builder /app/dist /app/dist
+COPY --from=builder /app/src /app/src
+COPY --from=builder /app/scripts /app/scripts
+COPY --from=builder /app/server.js /app/server.js
+COPY --from=builder /app/loader.mjs /app/loader.mjs
+COPY --from=builder /app/next.config.ts /app/next.config.ts
+COPY docker-start.sh /app/docker-start.sh
 
-# Build TypeScript files and ensure dist directory exists
-RUN npm run build && \
-    mkdir -p dist/migrations public
-
-# Create necessary directories with proper permissions
-RUN mkdir -p /data/backups /data/logs && \
-    adduser --disabled-password --gecos "" node && \
+# Create necessary directories
+RUN mkdir -p /app/public /app/lib /app/migrations /data/backups /data/logs && \
     chown -R node:node /data /app && \
     chmod +x docker-start.sh
 
@@ -86,10 +76,14 @@ RUN mkdir -p /data/backups /data/logs && \
 USER node
 
 # Use tini as init system
-ENTRYPOINT ["/usr/bin/tini", "--"]
+ENTRYPOINT ["/sbin/tini", "--"]
 
-# Expose the application port
-EXPOSE 3000
+# Expose the application ports
+EXPOSE 3000 9004
+
+# Set up healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1
 
 # Start with our custom script
 CMD ["./docker-start.sh"]

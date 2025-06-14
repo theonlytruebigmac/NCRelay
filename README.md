@@ -21,6 +21,7 @@ NCRelay is a powerful notification relay service that receives XML data via cust
 - **SMTP Configuration**: Email notifications and password reset functionality
 - **Data Encryption**: Sensitive data like webhook URLs are encrypted at rest
 - **Self-Hosted**: Full control over your data and infrastructure
+- **Docker Support**: Optimized containerization with Alpine-based images, multi-stage builds, and proper security practices
 
 ## 📋 Prerequisites
 

@@ -184,9 +184,11 @@ docker pull ghcr.io/theonlytruebigmac/ncrelay:1.2.3   # Specific version
 # Run container
 docker run -d \
   --name ncrelay \
-  -p 9003:9003 \
-  -v /host/path/to/db:/app/app.db \
+  -p 9004:3000 \
+  -v ncrelay-data:/data \
+  -v ncrelay-logs:/data/logs \
   -e NEXTAUTH_SECRET="your-secret" \
+  --env-file .env.production \
   ghcr.io/theonlytruebigmac/ncrelay:1.2.3
 ```
 
@@ -199,12 +201,16 @@ services:
   ncrelay:
     image: ghcr.io/theonlytruebigmac/ncrelay:1.2.3
     ports:
-      - "9003:9003"
+      - "9004:3000"
     volumes:
-      - ./data:/app/data
+      - ncrelay-data:/data
+      - ncrelay-logs:/data/logs
+    env_file:
+      - .env.production
     environment:
       - NEXTAUTH_SECRET=your-secret
       - NODE_ENV=production
+      - TZ=UTC
 ```
 
 See the [VERSIONING.md](./VERSIONING.md) document for details on our Docker image tagging strategy.
