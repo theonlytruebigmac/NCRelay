@@ -19,6 +19,9 @@ import { migration as migration013 } from './013-add-notification-queue.js';
 import { migration as migration014 } from './014-add-system-settings.js';
 import migration015 from './015-add-fieldfiterid-to-request-logs.js';
 import migration016 from './016-add-userid-to-request-logs.js';
+import migration017 from './017-add-indexes.js';
+import migration018 from './018-add-api-keys-and-features.js';
+import { migration as migration019 } from './013-ensure-notification-preferences.js';
 // Add new migration imports here...
 const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/app.db' : path.join(process.cwd(), 'app.db');
 // Create migrations table if it doesn't exist
@@ -131,6 +134,22 @@ function getAllMigrations() {
             name: migration016.name || 'add-userid-to-request-logs',
             up: migration016.up,
             down: migration016.down
+        },
+        {
+            id: 17,
+            name: migration017.name || 'add-indexes',
+            up: migration017.up,
+            down: migration017.down
+        },
+        {
+            id: 18,
+            name: migration018.name || 'add-api-keys-and-features',
+            up: migration018.up,
+            down: migration018.down
+        },
+        {
+            id: 19,
+            ...migration019
         }
     ];
     return migrations.sort((a, b) => a.id - b.id);

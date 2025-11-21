@@ -1,10 +1,12 @@
 import { cleanupOldLogs, createBackup, getSecuritySettings } from './log-manager';
 import { processQueue, cleanupOldNotifications } from './notification-queue';
+import { sendScheduledDigests } from './notification-digest';
 
 let logCleanupInterval: NodeJS.Timeout | null = null;
 let backupInterval: NodeJS.Timeout | null = null;
 let queueProcessingInterval: NodeJS.Timeout | null = null;
 let queueCleanupInterval: NodeJS.Timeout | null = null;
+let digestInterval: NodeJS.Timeout | null = null;
 
 /**
  * Initialize scheduled tasks
@@ -66,6 +68,15 @@ export function initScheduledTasks() {
       console.error('Scheduled queue cleanup failed:', error);
     }
   }, 24 * 60 * 60 * 1000); // 24 hours
+
+  // Schedule digest email task - check every hour
+  digestInterval = setInterval(async () => {
+    try {
+      await sendScheduledDigests();
+    } catch (error) {
+      console.error('Scheduled digest email task failed:', error);
+    }
+  }, 60 * 60 * 1000); // 1 hour
 }
 
 /**
@@ -90,5 +101,10 @@ export function stopScheduledTasks() {
   if (queueCleanupInterval) {
     clearInterval(queueCleanupInterval);
     queueCleanupInterval = null;
+  }
+
+  if (digestInterval) {
+    clearInterval(digestInterval);
+    digestInterval = null;
   }
 }

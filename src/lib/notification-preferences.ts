@@ -61,6 +61,17 @@ export async function createNotificationPreferences(
   return newPrefs;
 }
 
+export async function ensureNotificationPreferences(userId: string): Promise<NotificationPreferences> {
+  const existing = await getNotificationPreferences(userId);
+  
+  if (existing) {
+    return existing;
+  }
+  
+  // Create default preferences
+  return createNotificationPreferences(userId, {});
+}
+
 export async function updateNotificationPreferences(
   userId: string, 
   prefs: Partial<Omit<NotificationPreferences, 'userId' | 'createdAt' | 'updatedAt'>>
