@@ -230,6 +230,9 @@ export async function processQueue(batchSize = 10): Promise<{ processed: number,
             responseBody
           });
           failed++;
+          
+          // Send email notification for failure if user has preferences enabled
+          await sendFailureNotificationEmail(notification);
         }
       }
     } catch (error) {
@@ -256,11 +259,63 @@ export async function processQueue(batchSize = 10): Promise<{ processed: number,
           errorDetails: errorMessage
         });
         failed++;
+        
+        // Send email notification for failure if user has preferences enabled
+        await sendFailureNotificationEmail(notification);
       }
     }
   }
   
   return { processed, succeeded, failed };
+}
+
+/**
+ * Send email notification for a failed notification
+ */
+async function sendFailureNotificationEmail(notification: QueuedNotification): Promise<void> {
+  try {
+    // Get the integration to find the user
+    const db = await getDB();
+    const integration = db.prepare('SELECT userId FROM integrations WHERE id = ?').get(notification.integrationId) as { userId: string } | undefined;
+    
+    if (!integration) {
+      console.log('Could not find integration for notification, skipping email');
+      return;
+    }
+    
+    // Check if user wants email notifications
+    const { shouldSendEmailNotification } = await import('./notification-helpers');
+    const shouldSend = await shouldSendEmailNotification(integration.userId);
+    
+    if (!shouldSend) {
+      console.log(`User ${integration.userId} has email notifications disabled, skipping email`);
+      return;
+    }
+    
+    // Get user email
+    const { getUserById } = await import('./db');
+    const user = await getUserById(integration.userId);
+    
+    if (!user) {
+      console.log('Could not find user for notification, skipping email');
+      return;
+    }
+    
+    // Send the email
+    const { sendNotificationFailureEmail } = await import('./email');
+    await sendNotificationFailureEmail(user.email, {
+      integrationName: notification.integrationName,
+      platform: notification.platform,
+      apiEndpointName: notification.apiEndpointName,
+      errorDetails: notification.errorDetails,
+      retryCount: notification.retryCount,
+      maxRetries: notification.maxRetries,
+      timestamp: notification.updatedAt
+    });
+  } catch (error) {
+    console.error('Error sending failure notification email:', error);
+    // Don't throw - we don't want email failures to affect queue processing
+  }
 }
 
 /**

@@ -6,6 +6,18 @@ import { parse } from 'url';
 import next from 'next';
 // Import the server initialization module
 import { initializeApp } from './src/server.js';
+// Import environment validation
+import { validateEnv } from './src/lib/env.js';
+
+// Validate environment variables on startup
+console.log('Validating environment variables...');
+try {
+  validateEnv();
+  console.log('Environment variables validated successfully');
+} catch (error) {
+  console.error('Environment validation failed:', error.message);
+  process.exit(1);
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const port = parseInt(process.env.PORT || '3000', 10);

@@ -2,7 +2,14 @@ import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import type { User } from './types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || (() => {
+  throw new Error('JWT_SECRET environment variable must be set and at least 32 characters long');
+})();
+
+if (JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET environment variable must be at least 32 characters long');
+}
+
 const TOKEN_COOKIE_NAME = 'ncrelay-auth-token';
 const TOKEN_EXPIRY = '7d'; // 7 days
 

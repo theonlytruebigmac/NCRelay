@@ -130,11 +130,21 @@ async function createInitialAdminUserIfNotExists() {
   if (!existingAdmin) {
     const hashedPassword = await bcrypt.hash(adminPassword, 10);
     const now = new Date().toISOString();
+    const userId = uuidv4();
     const insertStmt = dbInstance.prepare(
       'INSERT INTO users (id, email, name, hashedPassword, isAdmin, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
-    insertStmt.run(uuidv4(), adminEmail, adminName, hashedPassword, 1, now, now);
+    insertStmt.run(userId, adminEmail, adminName, hashedPassword, 1, now, now);
     console.log(`Initial admin user ${adminEmail} created.`);
+    
+    // Create default notification preferences for the admin user
+    try {
+      const { ensureNotificationPreferences } = await import('./notification-preferences');
+      await ensureNotificationPreferences(userId);
+      console.log(`Default notification preferences created for admin user.`);
+    } catch (error) {
+      console.error('Failed to create notification preferences for admin user:', error);
+    }
   }
 }
 
@@ -209,8 +219,46 @@ export async function updateUserEmailDb(userId: string, newEmail: string): Promi
 
 
 // --- Password Reset Token CRUD ---
+
+// Rate limiting for password reset requests
+const resetAttempts = new Map<string, { count: number; resetTime: number }>();
+const MAX_RESET_ATTEMPTS = 3;
+const RESET_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
 export async function createPasswordResetToken(userId: string): Promise<string> {
   const db = await getDB();
+
+  // Get user email for rate limiting
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  // Check rate limit (3 attempts per hour)
+  const now = Date.now();
+  const attempts = resetAttempts.get(user.email);
+
+  if (attempts && attempts.count >= MAX_RESET_ATTEMPTS && now < attempts.resetTime) {
+    const minutesLeft = Math.ceil((attempts.resetTime - now) / 60000);
+    throw new Error(`Too many password reset requests. Please try again in ${minutesLeft} minute(s).`);
+  }
+
+  // Update or create rate limit entry
+  if (!attempts || now >= attempts.resetTime) {
+    resetAttempts.set(user.email, { count: 1, resetTime: now + RESET_WINDOW_MS });
+  } else {
+    resetAttempts.set(user.email, { count: attempts.count + 1, resetTime: attempts.resetTime });
+  }
+
+  // Clean up old entries periodically
+  if (resetAttempts.size > 1000) {
+    for (const [email, attempt] of resetAttempts.entries()) {
+      if (now >= attempt.resetTime) {
+        resetAttempts.delete(email);
+      }
+    }
+  }
+
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString(); // 1 hour expiry
   const stmt = db.prepare(

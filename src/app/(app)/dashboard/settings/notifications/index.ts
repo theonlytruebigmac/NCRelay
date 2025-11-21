@@ -90,10 +90,3 @@ export async function updateNotificationPreferencesAction(formData: FormData | a
 
   return updatedPrefs;
 }
-
-const actions = {
-  getNotificationPreferences: getNotificationPreferencesAction,
-  updateNotificationPreferences: updateNotificationPreferencesAction,
-};
-
-export default actions;

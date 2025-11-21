@@ -21,7 +21,8 @@ RUN npm ci && npm cache clean --force
 COPY . .
 
 # Build TypeScript files and create required directories
-RUN NODE_ENV=production npm run build && \
+# Set dummy JWT_SECRET for build phase (will be overridden at runtime)
+RUN JWT_SECRET=build-time-dummy-secret-32chars-minimum NODE_ENV=production npm run build && \
     node scripts/fix-migration-imports.js && \
     mkdir -p public dist/migrations dist/src/lib && \
     \
