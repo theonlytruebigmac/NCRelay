@@ -12,11 +12,13 @@ done
 # Ensure we're in the correct directory
 cd /app
 
-# Copy all JavaScript files to their proper locations
-echo "Setting up JavaScript files from dist directory..."
-mkdir -p /app/src/lib
-cp -R /app/dist/src/* /app/src/
-echo "JavaScript files copied successfully"
+# Verify required files exist
+if [ ! -f "/app/server.js" ]; then
+  echo "ERROR: server.js not found!"
+  exit 1
+fi
+
+echo "Starting NCRelay application..."
 
 # Wait for SQLite database to be available
 while ! test -w /data; do
@@ -26,11 +28,11 @@ done
 
 # Run migrations (using compiled JavaScript)
 echo "Running database migrations..."
-NODE_ENV=production node dist/migrations/index.js
-
-# Start the application
-echo "Starting NCRelay..."
-NODE_ENV=production exec node server.js
+if [ -f dist/migrations/index.js ]; then
+  NODE_ENV=production node dist/migrations/index.js || echo "Migration failed, continuing..."
+else
+  echo "Warning: Migration file not found, skipping..."
+fi
 
 # Start the application
 echo "Starting NCRelay..."

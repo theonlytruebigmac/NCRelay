@@ -321,9 +321,9 @@ export default function LogDetailsPage() {
                     </div>
                     {attempt.errorDetails && (
                       <div className="log-page-field">
-                        <span className="log-page-label">Error:</span> 
-                        <div className="log-page-error-container">
-                          <span className="log-page-error-text">{attempt.errorDetails}</span>
+                        <span className="log-page-label">{attempt.errorDetails.includes('queued') ? 'Status:' : 'Error:'}</span> 
+                        <div className={attempt.errorDetails.includes('queued') ? 'log-page-info-container' : 'log-page-error-container'}>
+                          <span className={attempt.errorDetails.includes('queued') ? 'log-page-info-text' : 'log-page-error-text'}>{attempt.errorDetails}</span>
                         </div>
                       </div>
                     )}

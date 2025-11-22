@@ -59,8 +59,8 @@ export function validateEnv() {
     return cachedEnv;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const errorMessages = error.errors.map(
-        (err) => `${err.path.join('.')}: ${err.message}`
+      const errorMessages = error.issues.map(
+        (err: z.ZodIssue) => `${err.path.join('.')}: ${err.message}`
       );
       throw new Error(
         `Environment variable validation failed:\n${errorMessages.join('\n')}`

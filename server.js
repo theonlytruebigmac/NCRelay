@@ -4,10 +4,10 @@ import { fileURLToPath } from 'url';
 import { createServer } from 'http';
 import { parse } from 'url';
 import next from 'next';
-// Import the server initialization module
-import { initializeApp } from './src/server.js';
-// Import environment validation
-import { validateEnv } from './src/lib/env.js';
+// Import environment validation, database and scheduled tasks from compiled dist
+import { validateEnv } from './dist/src/lib/env.js';
+import { initializeDatabase } from './dist/src/lib/db.js';
+import { initScheduledTasks } from './dist/src/lib/scheduled-tasks.js';
 
 // Validate environment variables on startup
 console.log('Validating environment variables...');
@@ -30,9 +30,12 @@ app.prepare().then(async () => {
   // Initialize the application and scheduled tasks
   console.log('Initializing NCRelay application and scheduled tasks...');
   try {
-    // Force initialization regardless of NODE_ENV
-    process.env.FORCE_INIT = 'true';
-    await initializeApp();
+    // Initialize database first
+    await initializeDatabase();
+    
+    // Then start scheduled tasks
+    initScheduledTasks();
+    
     console.log('NCRelay application and scheduled tasks initialized successfully');
   } catch (error) {
     console.error('Failed to initialize NCRelay application:', error);

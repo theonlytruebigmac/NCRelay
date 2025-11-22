@@ -33,7 +33,7 @@ const integrationSchema = z.object({
   name: z.string().min(3, { message: "Name must be at least 3 characters." }).max(50),
   platform: z.enum(['slack', 'discord', 'teams', 'generic_webhook']),
   webhookUrl: z.string().url({ message: "Invalid webhook URL." }),
-  enabled: z.boolean().default(true),
+  enabled: z.boolean(),
   fieldFilterId: z.union([
     z.literal('none'),  // For "No filter" selection
     z.string().min(1)   // For actual filter IDs

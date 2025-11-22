@@ -1,95 +1,58 @@
-# Project Completion Summary
+# NCRelay - Project Overview
 
-## ✅ COMPLETED TASKS
+> **📚 Full Documentation**: See [docs/README.md](README.md) for complete documentation structure
 
-### 1. IP Whitelisting Implementation
-- **Database Migration**: Successfully created and applied migration 008 to add `ipWhitelist` column
-- **Type System**: Extended `ApiEndpointConfig` interface with optional `ipWhitelist?: string[]` field
-- **Database Operations**: Updated all CRUD functions to handle JSON serialization/deserialization
-- **IP Validation Logic**: Robust `isIPAllowedForEndpoint()` utility with IPv4/IPv6 support
-- **Route Protection**: Custom endpoint routes now validate IP addresses before processing
-- **Form Integration**: Updated dashboard forms to manage IP whitelist settings
-- **UI Components**: Created reusable `IPWhitelistManager` component with full validation
-- **Comprehensive Testing**: All 6 test cases passing for edge cases and validation
+NCRelay is a secure, self-hosted notification relay platform that receives webhooks from N-central RMM and intelligently routes them to various platforms (Slack, Discord, Teams, Email) with powerful filtering, transformation, and security features.
 
-### 2. Documentation Updates
-- ✅ **New Documentation Files**:
-  - `docs/ip-whitelisting.md` - Comprehensive user guide
-  - `docs/DEPLOYMENT.md` - Production deployment guide
-  - `CHANGELOG.md` - Project change history
+## 🎯 Core Purpose
 
-- ✅ **Updated Documentation Files**:
-  - `README.md` - Added IP whitelisting features, security section, API reference
-  - `docs/DEVELOPMENT.md` - Updated schema, security features, component organization
-  - `docs/implementation-summary.md` - Added IP whitelisting implementation details
-  - `docs/field-filters.md` - Added security features cross-reference
-  - `docs/migrating-to-field-filters.md` - Added IP whitelisting considerations
+Transform complex RMM notifications into actionable, well-formatted messages delivered to the right teams at the right time, with enterprise-grade security and reliability.
 
-### 3. Configuration and Build System
-- **Jest Configuration**: Fixed to exclude TypeScript declaration files
-- **Package.json**: Updated description to reflect new features
-- **Build Verification**: All TypeScript compilation passing
-- **Type Checking**: All type definitions correct and consistent
+## ✅ Key Features (Implemented)
 
-### 4. Security Features
-- **Endpoint-Specific IP Restrictions**: Each custom API endpoint can have its own IP whitelist
-- **Backward Compatibility**: Existing endpoints remain unrestricted unless explicitly configured
-- **IPv4/IPv6 Support**: Full support for both IP address formats
-- **Localhost Handling**: Proper handling of localhost variations (127.0.0.1, ::1, localhost)
-- **Unknown IP Security**: Safe handling of unknown/invalid IP addresses
-- **403 Forbidden Responses**: Proper HTTP status codes for unauthorized access
+### Security & Access Control
+- **IP Whitelisting** - Endpoint-specific IP restrictions
+- **JWT Authentication** - Secure user authentication
+- **User Management** - Admin and user roles
+- **Encrypted Credentials** - AES-256 encryption for sensitive data
 
-## 🏁 PRODUCTION READINESS
-
-The IP whitelisting system is now **production-ready** with:
-
-1. **Full Functionality**: All features implemented and tested
-2. **Comprehensive Documentation**: User guides, development docs, deployment guides
-3. **Security Best Practices**: Proper validation, error handling, and HTTP responses
-4. **Type Safety**: Full TypeScript support with proper interfaces
-5. **Test Coverage**: Comprehensive test suite covering edge cases
-6. **Build Verification**: All compilation and builds passing
-7. **Migration Support**: Database schema properly updated
-
-## 📋 SYSTEM CAPABILITIES
-
-### Core Features
-- ✅ Custom API endpoint creation and management
-- ✅ N-central XML notification processing
-- ✅ Field filters for data extraction and filtering
-- ✅ **NEW**: IP whitelisting for endpoint-specific access control
-- ✅ User authentication and session management
-- ✅ Integration with external services
-
-### Security Features
-- ✅ Built-in user authentication
-- ✅ Field-level data filtering
-- ✅ **NEW**: IP-based access control
-- ✅ Secure password reset functionality
-- ✅ Session management with secure cookies
+### Notification Processing
+- **Field Filters** - Extract and transform notification data
+- **Enhanced Formatting** - Rich, color-coded messages for all platforms  
+- **Notification Queue** - Reliable delivery with automatic retries
+- **Request Logging** - Comprehensive audit trail
 
 ### User Experience
-- ✅ Modern dashboard interface
-- ✅ Visual field filter creation
-- ✅ **NEW**: Easy-to-use IP whitelist management
-- ✅ Real-time validation and feedback
-- ✅ Comprehensive error handling
+- **Custom API Endpoints** - Create and manage webhook receivers
+- **Notification Preferences** - Per-user notification settings
+- **Digest Emails** - Batched notification summaries
+- **Queue Management** - Monitor and manage pending notifications
+## 🏗️ Architecture
 
-## 🚀 NEXT STEPS
+- **Frontend**: Next.js 16 with React, TailwindCSS, shadcn/ui
+- **Backend**: Node.js with TypeScript, ES modules
+- **Database**: SQLite with Better-SQLite3
+- **Authentication**: JWT with bcrypt password hashing
+- **Deployment**: Docker with multi-stage builds
 
-The implementation is complete. For deployment:
+## 📦 Platform Support
 
-1. **Review Documentation**: All documentation is up-to-date and comprehensive
-2. **Deploy to Production**: Use the new deployment guide for production setup
-3. **Configure IP Whitelists**: Set up IP restrictions for custom endpoints as needed
-4. **Monitor and Test**: Verify IP whitelisting works correctly in production environment
+- ✅ **Slack** - Rich formatting with blocks and attachments
+- ✅ **Discord** - Embeds with colors and fields
+- ✅ **Microsoft Teams** - Adaptive cards
+- ✅ **Email** - HTML and text formats with nodemailer
 
-## 📚 KEY DOCUMENTATION
+## 🚀 Getting Started
 
-- **User Guide**: `docs/ip-whitelisting.md`
-- **Deployment**: `docs/DEPLOYMENT.md`
-- **Development**: `docs/DEVELOPMENT.md`
-- **Changes**: `CHANGELOG.md`
-- **Project Overview**: `README.md`
+### Quick Links
+- **Development Setup**: [Documentation/DEVELOPMENT.md](Documentation/DEVELOPMENT.md)
+- **Production Deployment**: [Documentation/DEPLOYMENT.md](Documentation/DEPLOYMENT.md)
+- **Docker Guide**: [Documentation/DOCKER-OVERVIEW.md](Documentation/DOCKER-OVERVIEW.md)
+- **Feature Documentation**: [Features/](Features/)
 
-The project is now feature-complete with production-ready IP whitelisting capabilities and comprehensive documentation.
+### Prerequisites
+- Node.js 20.x
+- Docker & Docker Compose (for containerized deployment)
+- SMTP server (for email notifications)
+
+## 📊 Current Status

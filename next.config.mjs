@@ -1,6 +1,5 @@
-import type {NextConfig} from 'next';
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   // Remove standalone output for now - using standard build
   // output: 'standalone', // Enable standalone output for Docker
   // outputFileTracing: true, // Enable file tracing for better module resolution

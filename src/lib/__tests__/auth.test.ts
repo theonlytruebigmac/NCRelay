@@ -12,9 +12,7 @@ describe('Auth', () => {
     id: 'test-user-id',
     email: 'test@example.com',
     name: 'Test User',
-    passwordHash: 'hashed-password',
     isAdmin: true,
-    createdAt: new Date().toISOString()
   };
 
   describe('generateAuthToken', () => {

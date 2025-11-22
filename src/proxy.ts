@@ -37,7 +37,7 @@ function getSecuritySettings(): SecuritySettings {
   };
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Handle filter routes
   if (request.nextUrl.pathname.startsWith('/dashboard/filters/')) {
     // Extract the path segment

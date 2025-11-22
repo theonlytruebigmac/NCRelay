@@ -2,7 +2,7 @@
 
 **Securely relay notifications to your favorite platforms.**
 
-NCRelay is a powerful notification relay service that receives XML data via custom API endpoints and forwards it to various messaging platforms like Slack, Discord, Microsoft Teams, and generic webhooks. Built with Next.js 15 and SQLite, it provides a secure, self-hosted solution for managing notification workflows.
+NCRelay is a powerful, enterprise-ready notification relay service that receives webhook data via custom API endpoints and forwards it to various messaging platforms like Slack, Discord, Microsoft Teams, and generic webhooks. Built with Next.js 15 and SQLite, it provides a secure, self-hosted solution for managing complex notification workflows with advanced transformation capabilities.
 
 <div align="center">
   <img src="docs/img/dashboard.png" alt="NCRelay Dashboard" width="800" />
@@ -10,16 +10,31 @@ NCRelay is a powerful notification relay service that receives XML data via cust
 
 ## 🚀 Features
 
-- **Custom API Endpoints**: Create custom API paths to receive XML notifications
+### Core Capabilities
+- **Custom API Endpoints**: Create custom API paths to receive webhook notifications from any system
+- **Multi-Platform Support**: Integrate with Slack, Discord, Microsoft Teams, Email, and generic webhooks
+- **Advanced Field Filtering**: Visual field selection and extraction from XML/JSON without regex knowledge
+- **Flexible Data Transformation**: Convert XML to JSON, plain text, or keep as XML with custom formatting
+- **Notification Queue**: Reliable delivery with automatic retry logic and failure tracking
+- **Enhanced Message Formatting**: Platform-specific rich formatting with colors, fields, and structured layouts
+
+### Security & Access Control
 - **IP Address Whitelisting**: Restrict endpoint access to specific IP addresses for enhanced security
-- **Multi-Platform Support**: Integrate with Slack, Discord, Microsoft Teams, and generic webhooks
-- **Flexible Data Transformation**: Convert XML to JSON, plain text, or keep as XML
-- **Advanced Field Filtering**: Visual field selection and extraction from XML without regex knowledge
-- **Secure Authentication**: User management with bcrypt password hashing
-- **Comprehensive Logging**: Track all requests and relay attempts with detailed logs
+- **Secure Authentication**: JWT-based user management with bcrypt password hashing
+- **Data Encryption**: Sensitive data like webhook URLs and secrets are encrypted at rest
+- **Secure Endpoint Paths**: Random UUID paths prevent enumeration attacks
+
+### Monitoring & Management
+- **Comprehensive Logging**: Track all requests and relay attempts with detailed logs and full request/response capture
+- **Notification Queue Management**: View, retry, and manage queued notifications with status tracking
+- **Request Audit Trail**: Full request/response logging with searchable and filterable interface
+- **User Notification Preferences**: Per-user notification settings with digest email support (hourly, daily, weekly)
+- **Scheduled Background Tasks**: Automatic log cleanup, database backups, queue processing, and digest emails
+
+### User Experience
 - **Intuitive Dashboard**: Clean, modern UI for managing integrations and monitoring
+- **Dark/Light Theme**: User preference with system theme detection
 - **SMTP Configuration**: Email notifications and password reset functionality
-- **Data Encryption**: Sensitive data like webhook URLs are encrypted at rest
 - **Self-Hosted**: Full control over your data and infrastructure
 - **Docker Support**: Optimized containerization with Alpine-based images, multi-stage builds, and proper security practices
 
@@ -314,14 +329,36 @@ curl -X POST \
 
 ## 🔒 Security Features
 
-- **Password Hashing**: bcrypt with salt rounds
-- **Data Encryption**: Sensitive data encrypted at rest
-- **IP Address Whitelisting**: Restrict endpoint access to specific IP addresses
-- **Data Privacy**: Field filters prevent sensitive information from being forwarded
+### Authentication & Authorization
+- **JWT-Based Authentication**: Secure session management with token-based authentication
+- **Password Hashing**: bcrypt with configurable salt rounds
+- **Password Reset**: Secure token-based password reset flow with expiration
+- **Session Expiration**: Configurable session timeouts
+
+### Data Protection
+- **Data Encryption**: Sensitive data (webhook URLs, secrets) encrypted at rest using AES-256
+- **Secure Environment Variables**: Critical secrets stored in environment, never in code
+- **Input Validation**: Comprehensive XML/JSON parsing and validation
+- **SQL Injection Prevention**: Parameterized queries throughout
+
+### Access Control
+- **IP Address Whitelisting**: Restrict endpoint access to specific IP addresses/ranges
 - **Secure Endpoint Paths**: Random UUID paths prevent enumeration attacks
-- **Session Management**: Secure authentication system
-- **Input Validation**: XML parsing and validation
-- **Error Handling**: Detailed logging without exposing internals
+- **Per-User Authentication**: Each user has individual credentials
+- **Data Privacy**: Field filters prevent sensitive information from being forwarded
+
+### Infrastructure Security
+- **Docker Security**: Non-root user, minimal Alpine base image, security scanning
+- **Error Handling**: Detailed logging without exposing internals or sensitive data
+- **Rate Limiting**: Built-in protection against abuse (configurable)
+- **HTTPS Support**: TLS/SSL termination via reverse proxy
+
+### Compliance & Auditing
+- **Request Logging**: Full audit trail of all API requests and responses
+- **Change Tracking**: User actions logged for accountability
+- **Data Retention**: Configurable log retention policies
+
+For security best practices and hardening, see our [Deployment Guide](docs/Documentation/deployment-guide.md)
 
 ## 🏗️ Development
 
@@ -355,28 +392,67 @@ npm run typecheck   # Run TypeScript checks
 
 ### Database Schema
 
-#### Tables
+NCRelay uses SQLite with 19 migrations providing comprehensive data management:
+
+#### Core Tables
 - **users**: User accounts and authentication
+- **user_preferences**: Per-user settings (theme, notifications)
 - **integrations**: Messaging platform configurations
 - **api_endpoints**: Custom API endpoint definitions with IP whitelist support
 - **field_filters**: Field extraction and filtering configurations
-- **request_logs**: API request and processing logs
+- **request_logs**: API request and processing logs with full request/response capture
+
+#### Notification Management
+- **notification_queue**: Queued notifications with retry logic
+- **notification_digest_queue**: Digest email queue
+- **notification_preferences**: User notification preferences (hourly, daily, weekly digests)
+
+#### System Configuration
 - **smtp_settings**: Email configuration
+- **system_settings**: Global system settings and security options
 - **password_reset_tokens**: Password reset functionality
+
+For detailed schema information, see the [migrations directory](src/migrations/)
 
 ## 🚀 Deployment
 
 ### Docker (Recommended)
-The recommended deployment method is using Docker with the provided images. See our [detailed deployment guide](docs/DEPLOYMENT.md) for complete instructions.
+The recommended deployment method is using Docker with the provided images from GitHub Container Registry.
+
+**Quick Start**:
+```bash
+docker run -d \
+  -p 9005:9005 \
+  -v ./data:/data \
+  -e NODE_ENV=production \
+  -e ENCRYPTION_KEY=your-32-character-key \
+  -e INITIAL_ADMIN_EMAIL=admin@example.com \
+  -e INITIAL_ADMIN_PASSWORD=secure-password \
+  ghcr.io/theonlytruebigmac/ncrelay:latest
+```
+
+See our [detailed deployment guide](docs/Documentation/deployment-guide.md) for complete instructions, including:
+- Docker Compose setup
+- Production best practices
+- Reverse proxy configuration
+- SSL/TLS setup
+- Backup strategies
 
 ### Environment Setup
 - Ensure `/data` directory exists for production database
-- Set strong `ENCRYPTION_KEY` and admin credentials
-- Configure reverse proxy if needed
+- Set strong `ENCRYPTION_KEY` (32+ characters) and admin credentials
+- Configure reverse proxy (nginx/Traefik) for HTTPS
+- Set up regular database backups
 
 ### Database Persistence
-- Development: Database file in project directory
-- Production: Mount `/data` volume for persistence
+- **Development**: Database file in project directory (`database.sqlite`)
+- **Production**: Mount `/data` volume for persistence
+- **Backups**: Automatic scheduled backups to `/data/backups` (configurable)
+
+### System Requirements
+- **Memory**: 512MB minimum, 1GB recommended
+- **Storage**: 1GB minimum (grows with logs/queue)
+- **CPU**: 1 core minimum, 2+ cores recommended for high traffic
 
 ## 🤝 Contributing
 
@@ -390,13 +466,40 @@ The recommended deployment method is using Docker with the provided images. See 
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🆘 Support
+## 🆘 Support & Troubleshooting
 
-For support and questions:
-- Check the logs in the Dashboard for troubleshooting
-- Review the API endpoint configuration
-- Verify webhook URLs are accessible
-- Ensure XML payload format is valid
+### Documentation Resources
+- **[Documentation Index](docs/README.md)** - Complete documentation navigation
+- **[Docker Troubleshooting](docs/Documentation/docker-troubleshooting-guide.md)** - Common Docker issues and solutions
+- **[Feature Guides](docs/Features/)** - Detailed feature documentation
+
+### Common Issues
+1. **Webhook Not Delivering**: 
+   - Check Dashboard → Queue for delivery status
+   - Verify webhook URL is accessible
+   - Review logs for error details
+
+2. **Authentication Issues**:
+   - Verify JWT_SECRET is set consistently
+   - Check session hasn't expired
+   - Clear browser cookies and re-login
+
+3. **Docker Build Failures**:
+   - See [Docker Troubleshooting Guide](docs/Documentation/docker-troubleshooting-guide.md)
+   - Ensure Node.js 20.19.5 compatibility
+   - Check ES module resolution issues
+
+4. **Database Errors**:
+   - Verify `/data` directory permissions
+   - Check disk space availability
+   - Review migration status
+
+### Getting Help
+- Check the Dashboard logs for detailed error messages
+- Review the comprehensive documentation in `/docs`
+- Verify environment variables are properly configured
+- Ensure all required migrations have run
+- Check GitHub Issues for known problems
 
 ## 🔄 API Reference
 
@@ -422,16 +525,37 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 📚 Documentation
 
-For more detailed information, please refer to our documentation:
+### Getting Started
+- **[Documentation Index](docs/README.md)** - 📋 Complete documentation navigation and overview
+- **[Project Summary](docs/PROJECT_SUMMARY.md)** - High-level overview of NCRelay
+- **[Deployment Guide](docs/Documentation/deployment-guide.md)** - Production deployment instructions
+- **[Development Guide](docs/Documentation/development-guide.md)** - Local development setup
+- **[Docker Overview](docs/Documentation/docker-overview.md)** - Docker architecture and usage
 
-- [Deployment Guide](docs/DEPLOYMENT.md)
-- [Development Guide](docs/DEVELOPMENT.md)
-- [IP Whitelisting](docs/ip-whitelisting.md)
-- [Field Filters](docs/field-filters.md)
-- [Enhanced Message Formatting](docs/enhanced-message-formatting.md)
-- [Versioning](docs/VERSIONING.md)
-- [Docker Build Troubleshooting](docs/DOCKER-BUILD-TROUBLESHOOTING.md)
-- [GitHub Container Registry Setup](docs/GHCR-SETUP.md)
+### Features & Implementation
+- **[Field Filters](docs/Features/field-filters.md)** - Extract and transform notification data
+- **[IP Whitelisting](docs/Features/ip-whitelisting.md)** - Endpoint security and access control
+- **[Enhanced Message Formatting](docs/Features/enhanced-message-formatting.md)** - Rich platform-specific formatting
+- **[Notification Preferences](docs/Features/notification-preferences-guide.md)** - User notification settings and digests
+- **[Feature Summary](docs/Features/feature-summary.md)** - Complete list of implemented features
+
+### Operations & Troubleshooting
+- **[Data Management](docs/Documentation/data-management-guide.md)** - Database backups and maintenance
+- **[Docker Troubleshooting](docs/Documentation/docker-troubleshooting-guide.md)** - Common Docker build issues
+- **[GHCR Setup](docs/Documentation/ghcr-setup-guide.md)** - GitHub Container Registry configuration
+- **[Versioning Guide](docs/Documentation/versioning-guide.md)** - Version management and releases
+- **[Documentation Style Guide](docs/STYLE-GUIDE.md)** - Documentation standards
+
+### Future Development
+- **[Quick Reference](docs/Future/QUICK-REFERENCE.md)** - 📋 Fast overview of all 33 planned features
+- **[Consolidated Roadmap](docs/Future/CONSOLIDATED-ROADMAP.md)** - ⭐ Complete implementation guide for 16 priority features
+- **[Expansion Features](docs/Future/EXPANSION-FEATURES.md)** - 🚀 17 additional features for enterprise capabilities
+- **[Conflict Analysis](docs/Future/CONFLICT-ANALYSIS.md)** - ✅ Compatibility verification of all planned features
+- **[Recommendations](docs/Future/recommendations.md)** - Code review and security improvements
+
+### Reference
+- **[Changelog](docs/CHANGELOG.md)** - Version history and changes
+- **[Documentation Verification](docs/VERIFICATION.md)** - Documentation accuracy audit
 
 ---
 

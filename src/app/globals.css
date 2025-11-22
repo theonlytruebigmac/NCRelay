@@ -581,6 +581,23 @@ body {
     @apply break-words text-red-400 whitespace-pre-wrap font-mono text-[0.7rem];
   }
 
+  /* Info Container (for queued notifications) */
+  .log-page-info-container {
+    @apply mt-1 border border-blue-300/20 bg-blue-900/10 p-2 rounded-md overflow-auto max-w-full w-full;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .log-page-info-container:hover {
+    @apply bg-blue-900/20;
+    border-color: hsl(220, 65%, 60%, 0.4);
+    box-shadow: 0 2px 10px rgba(59, 130, 246, 0.1);
+  }
+
+  .log-page-info-text {
+    @apply break-words text-blue-400 whitespace-pre-wrap font-mono text-[0.7rem];
+  }
+
   /* Format Badge */
   .log-page-format-badge {
     @apply ml-2 px-2 py-1 bg-muted rounded-md text-xs font-medium;

@@ -6,9 +6,6 @@ import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProviderWrapper } from '@/components/ThemeProviderWrapper';
 
-// Import server initialization to ensure it runs on app startup
-import '@/server';
-
 const geistSans = GeistSans;
 const geistMono = GeistMono;
 

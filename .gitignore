@@ -5,39 +5,150 @@
 /node_modules
 /.pnp
 .pnp.js
+.pnp.*
 
 # Testing
 /coverage
 .claude
+*.test.js.snap
 
 # Next.js
 /.next/
 /out/
+.next/
+next/
+.vercel
 
 # Production
 /build
+/dist/
+*.tsbuildinfo
 
 # Misc
 .DS_Store
 *.pem
+.idea/
+*.swp
+*.swo
+*~
 
-# debug
+# Debug logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
 # Docker
 .dockerignore
 docker-compose.yml
 docker-compose.dev.yml
+docker-compose.override.yml
+.docker/
+
 # VSCode
-.vscode
+.vscode/
+*.code-workspace
 
-
-# SQLite database file
+# SQLite database files (all variations)
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
 app.db*
-app.db-shm
-app.db-wal
+database.sqlite*
+/data/*.sqlite*
+/data/*.db*
 
-# ignore environment files
+# Environment files (ALL variations - CRITICAL)
+.env
+.env.*
 .env.local
+.env.development
+.env.test
 .env.production
+.env.production.local
+.env.development.local
+.env.test.local
+!.env.example
+!.env.template
+
+# Sensitive data and secrets
+config/secrets.json
+secrets/
+*.key
+*.cert
+*.csr
+*.crt
+*.p12
+*.pfx
+*.pem
+id_rsa*
+*.pub
+
+# Backup files
+*.backup
+*.bak
+*.old
+*.orig
+*~
+/data/backups/
+backups/
+
+# Logs
+logs/
+*.log
+combined.log
+error.log
+access.log
+/data/logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+.cache/
+.parcel-cache/
+
+# OS files
+Thumbs.db
+Desktop.ini
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.project
+.classpath
+.settings/
+
+# Package manager
+.yarn/
+.pnpm-debug.log
+package-lock.json.backup
+yarn.lock.backup
+
+# Build artifacts
+*.map
+.turbo/
+
+# NCRelay specific - Production data directory
+/data/
+!/data/.gitkeep
+
+# NCRelay specific - User uploads (if any)
+uploads/
+/public/uploads/
+
+# NCRelay specific - Local development overrides
+docker-compose.local.yml
+.env.override

@@ -8,8 +8,8 @@ import type { ApiEndpointConfig } from '@/lib/types';
 
 const apiEndpointSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters.").max(50, "Name must be at most 50 characters."),
-  associatedIntegrationIds: z.array(z.string()).default([]),
-  ipWhitelist: z.array(z.string().ip()).default([]).optional(),
+  associatedIntegrationIds: z.array(z.string()),
+  ipWhitelist: z.array(z.string().regex(/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/, 'Invalid IP address')).optional(),
 });
 
 export async function getApiEndpointsAction(): Promise<ApiEndpointConfig[]> {

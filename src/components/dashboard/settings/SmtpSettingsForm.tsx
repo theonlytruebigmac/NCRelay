@@ -37,11 +37,11 @@ import {
 // Define the schema locally as it's not exported from actions.ts anymore
 const smtpSettingsSchema = z.object({
   host: z.string().min(1, "Host cannot be empty."),
-  port: z.coerce.number().int().min(1, "Port must be a positive integer.").max(65535),
+  port: z.number().int().min(1, "Port must be a positive integer.").max(65535),
   user: z.string().min(1, "User cannot be empty."),
   password: z.string().optional(), // Password can be optional for some SMTP setups
-  secure: z.boolean().default(false),
-  fromEmail: z.string().email("Invalid &apos;From Email&apos; address."),
+  secure: z.boolean(),
+  fromEmail: z.string().email("Invalid 'From Email' address."),
   appBaseUrl: z.string().url("App Base URL must be a valid URL (e.g., http://localhost:9002 or https://yourdomain.com)."),
 });
 

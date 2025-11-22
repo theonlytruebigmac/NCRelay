@@ -110,7 +110,7 @@ export async function saveSmtpSettingsAction(formData: FormData): Promise<{ succ
   if (!validatedFields.success) {
     return {
       success: false,
-      errors: validatedFields.error.errors,
+      errors: validatedFields.error.issues,
     };
   }
 

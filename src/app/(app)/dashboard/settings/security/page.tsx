@@ -19,14 +19,14 @@ import { LoggingSettings } from "@/components/dashboard/settings/LoggingSettings
 
 // Schema for validating security settings
 const securitySettingsSchema = z.object({
-  id: z.string().default('default_security_settings'),
-  rateLimitMaxRequests: z.coerce.number().int().min(1).max(10000),
-  rateLimitWindowMs: z.coerce.number().int().min(1000).max(3600000),
-  maxPayloadSize: z.coerce.number().int().min(1024).max(100 * 1024 * 1024), // 1KB to 100MB
-  logRetentionDays: z.coerce.number().int().min(1).max(365), // 1 day to 1 year
+  id: z.string(),
+  rateLimitMaxRequests: z.number().int().min(1).max(10000),
+  rateLimitWindowMs: z.number().int().min(1000).max(3600000),
+  maxPayloadSize: z.number().int().min(1024).max(100 * 1024 * 1024), // 1KB to 100MB
+  logRetentionDays: z.number().int().min(1).max(365), // 1 day to 1 year
   apiRateLimitEnabled: z.boolean(),
   webhookRateLimitEnabled: z.boolean(),
-  ipWhitelist: z.array(z.string()),
+  ipWhitelist: z.array(z.string().regex(/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/, 'Invalid IP address')),
   enableDetailedErrorLogs: z.boolean(),
 });
 

@@ -62,8 +62,8 @@ type IntegrationForSelection = Pick<Integration, 'id' | 'name' | 'platform' | 'e
 
 const endpointFormSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters.").max(50, "Name must be at most 50 characters."),
-  associatedIntegrationIds: z.array(z.string()).default([]),
-  ipWhitelist: z.array(z.string()).default([]),
+  associatedIntegrationIds: z.array(z.string()),
+  ipWhitelist: z.array(z.string()),
 });
 
 export type EndpointFormValues = z.infer<typeof endpointFormSchema>;

@@ -14,14 +14,15 @@ describe('Field Filter Processor', () => {
 </notification>`;
 
   describe('processXmlWithFieldFilter', () => {
-    it('should extract all fields when includeFields is empty', async () => {
+    it('should extract all fields when includedFields is empty', async () => {
       const fieldFilter: FieldFilterConfig = {
         id: 'test-filter',
         name: 'Test Filter',
         description: 'Test',
-        includeFields: [],
-        excludeFields: [],
-        createdAt: new Date().toISOString()
+        includedFields: [],
+        excludedFields: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
       const result = await processXmlWithFieldFilter(sampleXml, fieldFilter);
@@ -37,9 +38,10 @@ describe('Field Filter Processor', () => {
         id: 'test-filter',
         name: 'Test Filter',
         description: 'Test',
-        includeFields: ['devicename', 'alertmessage'],
-        excludeFields: [],
-        createdAt: new Date().toISOString()
+        includedFields: ['devicename', 'alertmessage'],
+        excludedFields: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
       const result = await processXmlWithFieldFilter(sampleXml, fieldFilter);
@@ -55,9 +57,10 @@ describe('Field Filter Processor', () => {
         id: 'test-filter',
         name: 'Test Filter',
         description: 'Test',
-        includeFields: [],
-        excludeFields: ['internal_id', 'timestamp'],
-        createdAt: new Date().toISOString()
+        includedFields: [],
+        excludedFields: ['internal_id', 'timestamp'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
       const result = await processXmlWithFieldFilter(sampleXml, fieldFilter);
@@ -75,9 +78,10 @@ describe('Field Filter Processor', () => {
         id: 'test-filter',
         name: 'Test Filter',
         description: 'Test',
-        includeFields: [],
-        excludeFields: [],
-        createdAt: new Date().toISOString()
+        includedFields: [],
+        excludedFields: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
       const result = await processXmlWithFieldFilter(testXml, fieldFilter);
@@ -91,9 +95,10 @@ describe('Field Filter Processor', () => {
         id: 'test-filter',
         name: 'Test Filter',
         description: 'Test',
-        includeFields: ['devicename', 'severity'],
-        excludeFields: [],
-        createdAt: new Date().toISOString()
+        includedFields: ['devicename', 'severity'],
+        excludedFields: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
       const result = await processXmlWithFieldFilter(sampleXml, fieldFilter);
@@ -110,9 +115,10 @@ describe('Field Filter Processor', () => {
         id: 'test-filter',
         name: 'Test Filter',
         description: 'Test',
-        includeFields: [],
-        excludeFields: [],
-        createdAt: new Date().toISOString()
+        includedFields: [],
+        excludedFields: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
       await expect(
