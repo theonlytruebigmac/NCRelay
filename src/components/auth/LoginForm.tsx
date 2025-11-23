@@ -58,6 +58,9 @@ export function LoginForm() {
           title: "Login Successful",
           description: "Welcome back!",
         });
+      } else if (result.requires2FA) {
+        // Redirect to 2FA verification page
+        router.push("/verify-2fa");
       } else {
         setFormError(result.error || "Invalid email or password. Please try again.");
         toast({

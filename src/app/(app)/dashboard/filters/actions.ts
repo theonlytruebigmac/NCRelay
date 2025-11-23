@@ -5,6 +5,13 @@ import { createFieldFilter, updateFieldFilter, deleteFieldFilter, getFieldFilter
 import { getCurrentUser } from "@/lib/auth";
 import { getRequestLogs } from "@/lib/db";
 import type { FieldFilterConfig } from "@/lib/types";
+import { cookies } from 'next/headers';
+
+async function getCurrentTenantId(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const tenantCookie = cookieStore.get('currentTenantId');
+  return tenantCookie?.value || null;
+}
 
 /**
  * Get all field filters
@@ -15,7 +22,8 @@ export async function getFieldFiltersAction(): Promise<FieldFilterConfig[]> {
     throw new Error("Not authenticated");
   }
 
-  return getFieldFilters();
+  const tenantId = await getCurrentTenantId();
+  return tenantId ? getFieldFilters(tenantId) : getFieldFilters();
 }
 
 /**
@@ -41,7 +49,8 @@ export async function createFieldFilterAction(
     throw new Error("Not authenticated");
   }
 
-  const filter = await createFieldFilter(data);
+  const tenantId = await getCurrentTenantId();
+  const filter = await createFieldFilter(data, tenantId || undefined);
   revalidatePath("/dashboard/filters");
   return filter;
 }
@@ -86,7 +95,8 @@ export async function getLogSamplesAction(): Promise<string[]> {
     throw new Error("Not authenticated");
   }
 
-  const logs = await getRequestLogs();
+  const tenantId = await getCurrentTenantId();
+  const logs = tenantId ? await getRequestLogs(tenantId) : await getRequestLogs();
   return logs
     .map(log => log.incomingRequest.bodyRaw)
     .filter(body => body && body.trim().length > 0)

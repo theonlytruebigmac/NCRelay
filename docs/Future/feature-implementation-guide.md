@@ -28,8 +28,41 @@ This guide provides detailed, step-by-step instructions for implementing all 16 
 ## 1. API Key Authentication
 
 **Effort:** 3-4 hours
-**Priority:** High
+**Priority:** Medium (P2)
 **Dependencies:** Migration 018 (completed)
+**Note:** Optional feature, only implement if you have public endpoints needing API key auth
+
+### ⚠️ Important: Optional By Design
+
+API key authentication is **OPTIONAL** and defaults to **disabled** for each endpoint. This is critical because:
+
+- **Legacy Tools**: Many monitoring systems (N-Central, PRTG, Nagios) only support URL fields
+- **Simple Integrations**: Basic webhooks don't need authentication overhead
+- **Backward Compatibility**: Existing endpoints continue working without changes
+- **User Choice**: Teams decide which endpoints need API keys
+
+### When to Enable API Keys
+
+✅ **Enable for:**
+- Public-facing endpoints exposed to the internet
+- Production systems handling sensitive data
+- Multi-tenant environments where you need to track sources
+- Endpoints receiving data from controllable clients (custom apps, modern APIs)
+
+❌ **Keep Disabled for:**
+- N-Central notifications (URL-only field)
+- Monitoring tools with limited configuration
+- Internal-only endpoints behind firewall
+- Development/testing endpoints
+
+### Alternative Security for Tools Like N-Central
+
+For tools that only support URL configuration, use these security layers instead:
+
+1. **IP Whitelisting**: Add N-Central server IP to tenant whitelist
+2. **Obscure Endpoint Names**: Use UUIDs or random strings (`/custom/a7f3d8c2-9e1b-...`)
+3. **Network Segmentation**: Keep NCRelay on internal network
+4. **Rate Limiting**: Protect against abuse via tenant rate limits
 
 ### Database Schema
 Already created in migration 018:
@@ -174,12 +207,13 @@ export async function toggleApiKey(id: string, enabled: boolean): Promise<boolea
 // Add at the beginning of POST handler
 const endpoint = await getApiEndpointByName(params.endpointName);
 
+// OPTIONAL: Only check if endpoint has requireApiKey enabled
 if (endpoint.requireApiKey) {
   const apiKey = request.headers.get('x-api-key');
 
   if (!apiKey) {
     return NextResponse.json(
-      { error: 'API key required' },
+      { error: 'API key required. This endpoint requires authentication.' },
       { status: 401 }
     );
   }
@@ -188,11 +222,13 @@ if (endpoint.requireApiKey) {
 
   if (!isValid) {
     return NextResponse.json(
-      { error: 'Invalid API key' },
+      { error: 'Invalid or expired API key' },
       { status: 401 }
     );
   }
 }
+
+// If requireApiKey is false (default), continue processing without auth check
 ```
 
 ### Frontend Implementation
@@ -593,11 +629,32 @@ export async function POST(request: NextRequest) {
 
 ---
 
-## 3. Webhook Signature Verification (HMAC)
+## 3. Webhook Signature Verification (HMAC) - Optional
 
 **Effort:** 2-3 hours
-**Priority:** High
+**Priority:** Low (P3)
 **Dependencies:** Migration 018 (completed)
+**Note:** Optional feature, rarely needed. Discord/Slack/Teams don't verify signatures.
+
+### ⚠️ Reality Check: Most Platforms Don't Verify Signatures
+
+HMAC signatures are **optional** and **disabled by default** because:
+
+- **Discord, Slack, Teams**: Do NOT verify HMAC signatures (simple POST, accept any JSON)
+- **Most Chat Platforms**: Accept webhooks without authentication
+- **Common Use Case**: 95% of NCRelay integrations don't need signatures
+
+**When to Enable:**
+✅ Custom APIs that verify signatures (GitHub/Stripe-style)
+✅ Financial systems requiring authenticity
+✅ Compliance/audit requirements
+
+**When NOT Needed:**
+❌ Discord, Slack, Teams (they'll ignore the signature header)
+❌ Internal systems
+❌ Simple notifications
+
+**Database**: `integrations.signWebhooks` defaults to `0` (disabled)
 
 ### Backend Implementation
 

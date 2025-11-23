@@ -10,7 +10,7 @@ import { loginAction, logoutAction, updateUserNameAction as updateUserNameDbActi
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (formData: FormData) => Promise<{ success?: boolean; error?: string }>;
+  login: (formData: FormData) => Promise<{ success?: boolean; error?: string; requires2FA?: boolean }>;
   logout: () => Promise<void>;
   updateUserName: (formData: FormData) => Promise<{ success: boolean, error?: string }>;
   updateUserEmail: (formData: FormData) => Promise<{ success: boolean, error?: string }>;
@@ -58,6 +58,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await refreshUser();
         return { success: true };
       }
+      if (result.requires2FA) {
+        // Return 2FA required flag to let component handle redirect
+        return { requires2FA: true };
+      }
       return result;
     } catch (error) {
       console.error('Login failed:', error);
@@ -69,6 +73,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await logoutAction();
       setUser(null);
+      router.push('/login');
     } catch (error) {
       console.error('Logout failed:', error);
       // Even if logout action fails, clear local state

@@ -2,12 +2,26 @@
 
 **Last Updated**: November 22, 2025
 
+## ✅ Recently Implemented (November 2025)
+
+The following features have been **COMPLETED** and are now in production:
+
+- ✅ **Multi-Factor Authentication (2FA)** - TOTP-based 2FA with QR codes and backup codes
+- ✅ **Active Session Management** - Track and manage sessions across devices with geolocation
+- ✅ **Security Audit Logs** - Comprehensive audit trail of all security events
+- ✅ **Security Policies** - Tenant-level password, 2FA, session, and lockout policies
+- ✅ **API Rate Limiting** - Configurable rate limiting with IP whitelisting per tenant
+
+See [CONSOLIDATED-ROADMAP.md](CONSOLIDATED-ROADMAP.md) for full details on these implementations.
+
+---
+
 ## 📖 Where to Start
 
-1. **[CONSOLIDATED-ROADMAP.md](CONSOLIDATED-ROADMAP.md)** - Complete overview of all 16 features
+1. **[CONSOLIDATED-ROADMAP.md](CONSOLIDATED-ROADMAP.md)** - Complete overview of all features (implemented + planned)
 2. **[CONFLICT-ANALYSIS.md](CONFLICT-ANALYSIS.md)** - Proof that all features are compatible
 
-## 🚀 The 16 Features
+## 🚀 Remaining Planned Features
 
 ### By Priority
 
@@ -25,7 +39,7 @@
 - **Feature 16**: Alerting System (10-12h)
 
 #### P2 - Medium Priority (Nice to Have)
-- **Feature 2**: MFA Support (8-10h)
+- ~~**Feature 2**: MFA Support~~ - ✅ **IMPLEMENTED**
 - **Feature 5**: Advanced Analytics Dashboard (12-15h)
 - **Feature 7**: Public Health Status Page (6-8h)
 - **Feature 8**: Interactive API Documentation (8-10h)

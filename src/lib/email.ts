@@ -3,13 +3,67 @@
 
 import nodemailer from 'nodemailer';
 import * as db from '@/lib/db'; // To fetch SMTP settings
+import { createTenantTransporter, getTenantSmtpSettings } from './smtp-settings';
 
 interface MailOptions {
   to: string;
-  from: string;
+  from?: string;
   subject: string;
   text: string;
   html: string;
+}
+
+interface SendEmailOptions {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+  tenantId?: string; // If provided, use tenant SMTP settings
+}
+
+/**
+ * Send email using tenant SMTP if available, otherwise use system SMTP
+ */
+export async function sendEmail(options: SendEmailOptions): Promise<void> {
+  let transporter: nodemailer.Transporter | null = null;
+  let fromAddress = 'noreply@ncrelay.local';
+  let fromName = 'NCRelay';
+
+  // Try tenant SMTP first if tenantId provided
+  if (options.tenantId) {
+    try {
+      const tenantSettings = await getTenantSmtpSettings(options.tenantId);
+      if (tenantSettings) {
+        transporter = await createTenantTransporter(options.tenantId);
+        fromAddress = tenantSettings.fromAddress;
+        fromName = tenantSettings.fromName || 'NCRelay';
+      }
+    } catch (error) {
+      console.warn('Failed to use tenant SMTP, falling back to system SMTP:', error);
+    }
+  }
+
+  // Fall back to system SMTP if tenant SMTP not available
+  if (!transporter) {
+    transporter = await getTransporter();
+    const settings = await db.getSmtpSettings();
+    if (settings) {
+      fromAddress = settings.fromEmail || fromAddress;
+    }
+  }
+
+  if (!transporter) {
+    console.error('No SMTP configuration available');
+    throw new Error('Email service not configured');
+  }
+
+  await transporter.sendMail({
+    from: `"${fromName}" <${fromAddress}>`,
+    to: options.to,
+    subject: options.subject,
+    text: options.text,
+    html: options.html,
+  });
 }
 
 async function getTransporter(): Promise<nodemailer.Transporter | null> {

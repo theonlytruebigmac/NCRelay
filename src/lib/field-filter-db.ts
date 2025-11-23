@@ -5,7 +5,7 @@ import crypto from 'crypto';
 /**
  * Create a new field filter configuration
  */
-export async function createFieldFilter(data: Omit<FieldFilterConfig, 'id' | 'createdAt' | 'updatedAt'>): Promise<FieldFilterConfig> {
+export async function createFieldFilter(data: Omit<FieldFilterConfig, 'id' | 'createdAt' | 'updatedAt'>, tenantId?: string): Promise<FieldFilterConfig> {
   const db = await getDB();
   
   const id = crypto.randomUUID();
@@ -13,8 +13,8 @@ export async function createFieldFilter(data: Omit<FieldFilterConfig, 'id' | 'cr
   
   db.prepare(
     `INSERT INTO field_filters (
-      id, name, included_fields, excluded_fields, description, sample_data, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      id, name, included_fields, excluded_fields, description, sample_data, created_at, updated_at, tenantId
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     data.name,
@@ -23,7 +23,8 @@ export async function createFieldFilter(data: Omit<FieldFilterConfig, 'id' | 'cr
     data.description || null,
     data.sampleData || null,
     now,
-    now
+    now,
+    tenantId || null
   );
   
   return {
@@ -75,11 +76,14 @@ export async function getFieldFilter(id: string): Promise<FieldFilterConfig | nu
 /**
  * Get all field filters
  */
-export async function getFieldFilters(): Promise<FieldFilterConfig[]> {
+export async function getFieldFilters(tenantId?: string): Promise<FieldFilterConfig[]> {
   const db = await getDB();
   
-  const stmt = db.prepare(`SELECT * FROM field_filters ORDER BY name ASC`);
-  const rows = stmt.all() as FieldFilterRow[];
+  const query = tenantId 
+    ? 'SELECT * FROM field_filters WHERE tenantId = ? ORDER BY name ASC'
+    : 'SELECT * FROM field_filters ORDER BY name ASC';
+  const stmt = db.prepare(query);
+  const rows = tenantId ? stmt.all(tenantId) as FieldFilterRow[] : stmt.all() as FieldFilterRow[];
   
   return rows.map((row) => ({
     id: row.id,

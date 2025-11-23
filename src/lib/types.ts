@@ -154,3 +154,88 @@ export interface QueuedNotification {
     apiEndpointPath: string;
     originalRequestId: string;
 }
+
+// Multi-tenancy types
+export type TenantPlan = 'free' | 'pro' | 'enterprise';
+export type TenantUserRole = 'owner' | 'admin' | 'integration_manager' | 'endpoint_manager' | 'developer' | 'viewer';
+
+export interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  domain?: string;
+  plan: TenantPlan;
+  maxEndpoints: number;
+  maxIntegrations: number;
+  maxRequestsPerMonth: number;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt?: string;
+}
+
+export interface TenantUser {
+  id: string;
+  tenantId: string;
+  userId: string;
+  role: TenantUserRole;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TenantWithRole extends Tenant {
+  userRole: TenantUserRole;
+}
+
+// RBAC types
+export type Resource = 
+  | 'tenant'
+  | 'users'
+  | 'endpoints'
+  | 'integrations'
+  | 'logs'
+  | 'webhooks'
+  | 'analytics'
+  | 'billing'
+  | 'settings'
+  | 'field_filters'
+  | 'templates';
+
+export type Action = 'create' | 'read' | 'update' | 'delete' | 'test' | 'manage';
+
+export interface Permission {
+  resource: Resource;
+  action: Action;
+  allowed: boolean;
+}
+
+export interface RolePermission {
+  id: string;
+  tenantId: string;
+  role: TenantUserRole;
+  resource: Resource;
+  action: Action;
+  allowed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuditLog {
+  id: string;
+  tenantId: string;
+  userId: string;
+  action: string;
+  resource: Resource;
+  resourceId?: string;
+  changes?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  result: 'success' | 'failure' | 'denied';
+  reason?: string;
+  timestamp: string;
+}
+
+export interface PermissionCheck {
+  allowed: boolean;
+  reason?: string;
+}

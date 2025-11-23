@@ -5,15 +5,24 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import * as db from '@/lib/db';
 import type { ApiEndpointConfig } from '@/lib/types';
+import { cookies } from 'next/headers';
 
 const apiEndpointSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters.").max(50, "Name must be at most 50 characters."),
   associatedIntegrationIds: z.array(z.string()),
   ipWhitelist: z.array(z.string().regex(/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/, 'Invalid IP address')).optional(),
+  tenantId: z.string().optional(),
 });
 
+async function getCurrentTenantId(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const tenantCookie = cookieStore.get('currentTenantId');
+  return tenantCookie?.value || null;
+}
+
 export async function getApiEndpointsAction(): Promise<ApiEndpointConfig[]> {
-  const endpoints = await db.getApiEndpoints(); 
+  const tenantId = await getCurrentTenantId();
+  const endpoints = tenantId ? await db.getApiEndpoints(tenantId) : await db.getApiEndpoints();
   return endpoints.map(ep => ({ 
     ...ep,
     // associatedIntegrationIds is already parsed in db.ts
@@ -21,7 +30,8 @@ export async function getApiEndpointsAction(): Promise<ApiEndpointConfig[]> {
 }
 
 export async function getIntegrationsForEndpointSelectionAction() {
-    const integrations = await db.getIntegrations(); 
+    const tenantId = await getCurrentTenantId();
+    const integrations = tenantId ? await db.getIntegrations(tenantId) : await db.getIntegrations();
     return integrations.map(int => ({ id: int.id, name: int.name, platform: int.platform, enabled: int.enabled }));
 }
 
@@ -30,11 +40,13 @@ export async function addApiEndpointAction(formData: FormData) {
   const name = formData.get('name') as string;
   const associatedIntegrationIds = formData.getAll('associatedIntegrationIds[]') as string[];
   const ipWhitelist = formData.getAll('ipWhitelist[]') as string[];
+  const tenantId = await getCurrentTenantId();
 
   const validatedFields = apiEndpointSchema.safeParse({
     name,
     associatedIntegrationIds,
     ipWhitelist,
+    tenantId,
   });
 
   if (!validatedFields.success) {
@@ -42,7 +54,8 @@ export async function addApiEndpointAction(formData: FormData) {
   }
 
   try {
-    await db.addApiEndpoint(validatedFields.data);
+    const { tenantId: _tenantId, ...endpointData } = validatedFields.data;
+    await db.addApiEndpoint(endpointData, tenantId || undefined);
     revalidatePath('/dashboard/settings/api');
     return { success: true };
   } catch (error) {

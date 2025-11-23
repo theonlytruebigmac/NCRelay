@@ -10,6 +10,7 @@ import type { Integration } from "@/lib/types";
 import { IntegrationCard } from "@/components/dashboard/IntegrationCard";
 import { PlusCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/use-permissions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,6 +58,11 @@ export default function IntegrationsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const { can, loading: permissionsLoading } = usePermissions();
+  
+  const canCreate = can('integrations', 'create');
+  const canUpdate = can('integrations', 'update');
+  const canDelete = can('integrations', 'delete');
 
 
   async function fetchIntegrations() {
@@ -168,11 +174,13 @@ export default function IntegrationsPage() {
       title="Integrations Configuration"
       description="Manage your connections to messaging platforms."
       actions={
-        <Button asChild className="bg-primary hover:bg-primary/90">
-          <Link href="/dashboard/integrations/add">
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Integration
-          </Link>
-        </Button>
+        canCreate ? (
+          <Button asChild className="bg-primary hover:bg-primary/90">
+            <Link href="/dashboard/integrations/add">
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Integration
+            </Link>
+          </Button>
+        ) : null
       }
     >
       {integrations.length === 0 ? (
@@ -180,13 +188,15 @@ export default function IntegrationsPage() {
           <WebhookIcon className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-xl font-semibold text-foreground">No integrations yet</h3>
           <p className="mt-2 mb-4 text-sm text-muted-foreground">
-            Get started by adding your first integration.
+            {canCreate ? 'Get started by adding your first integration.' : 'No integrations have been created yet.'}
           </p>
-          <Button asChild className="bg-primary hover:bg-primary/90">
-            <Link href="/dashboard/integrations/add">
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Integration
-            </Link>
-          </Button>
+          {canCreate && (
+            <Button asChild className="bg-primary hover:bg-primary/90">
+              <Link href="/dashboard/integrations/add">
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Integration
+              </Link>
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -194,9 +204,9 @@ export default function IntegrationsPage() {
             <IntegrationCard
               key={integration.id}
               integration={integration}
-              onToggleEnabled={handleToggleEnabled}
-              onEdit={handleEdit}
-              onDelete={() => confirmDelete(integration)}
+              onToggleEnabled={canUpdate ? handleToggleEnabled : undefined}
+              onEdit={canUpdate ? handleEdit : undefined}
+              onDelete={canDelete ? () => confirmDelete(integration) : undefined}
               isToggling={isToggling === integration.id}
             />
           ))}

@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { getDashboardStatsAction } from './actions'; // Import the new Server Action
 import type { DashboardStats } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { usePermissions } from "@/hooks/use-permissions";
 
 
 export default function DashboardPage() {
@@ -17,6 +18,11 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isQuickStartExpanded, setIsQuickStartExpanded] = useState(false);
+  const { can } = usePermissions();
+  
+  const canViewIntegrations = can('integrations', 'read');
+  const canViewLogs = can('logs', 'read');
+  const canViewEndpoints = can('endpoints', 'read');
 
   useEffect(() => {
     async function fetchStats() {
@@ -67,9 +73,11 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">
               Currently relaying notifications
             </p>
-            <Button asChild size="sm" className="mt-4">
-              <Link href="/dashboard/integrations">Manage Integrations</Link>
-            </Button>
+            {canViewIntegrations && (
+              <Button asChild size="sm" className="mt-4">
+                <Link href="/dashboard/integrations">Manage Integrations</Link>
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -89,9 +97,11 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">
               Total API requests logged (Last 50)
             </p>
-             <Button asChild variant="outline" size="sm" className="mt-4">
-              <Link href="/dashboard/logs">View Logs</Link>
-            </Button>
+            {canViewLogs && (
+              <Button asChild variant="outline" size="sm" className="mt-4">
+                <Link href="/dashboard/logs">View Logs</Link>
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -116,9 +126,11 @@ export default function DashboardPage() {
                 {stats.apiEndpointsRequestsCount} requests processed via endpoints
               </p>
             )}
-            <Button asChild variant="secondary" size="sm" className="mt-4">
-              <Link href="/dashboard/settings/api">Configure Endpoints</Link>
-            </Button>
+            {canViewEndpoints && (
+              <Button asChild variant="secondary" size="sm" className="mt-4">
+                <Link href="/dashboard/settings/api">Configure Endpoints</Link>
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -144,9 +156,11 @@ export default function DashboardPage() {
                 : "No outbound attempts yet"
               }
             </p>
-            <Button asChild variant="outline" size="sm" className="mt-4">
-              <Link href="/dashboard/logs">View Details</Link>
-            </Button>
+            {canViewLogs && (
+              <Button asChild variant="outline" size="sm" className="mt-4">
+                <Link href="/dashboard/logs">View Details</Link>
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -172,9 +186,11 @@ export default function DashboardPage() {
                 : "From recent logs (last 50)"
               }
             </p>
-            <Button asChild variant="outline" size="sm" className="mt-4">
-              <Link href="/dashboard/logs">Troubleshoot</Link>
-            </Button>
+            {canViewLogs && (
+              <Button asChild variant="outline" size="sm" className="mt-4">
+                <Link href="/dashboard/logs">Troubleshoot</Link>
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>

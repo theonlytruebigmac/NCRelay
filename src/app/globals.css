@@ -26,7 +26,7 @@ body {
     --muted: 240 4.8% 95.9%;
     --muted-foreground: 240 3.8% 46.1%;
 
-    --accent: 187 85% 45%; /* Vibrant but professional cyan */
+    --accent: 231 48% 58%; /* Lighter indigo to match primary theme */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
@@ -47,12 +47,12 @@ body {
     /* Sidebar specific theme */
     --sidebar-background: 240 5.9% 10%; /* Darker theme for sidebar for contrast */
     --sidebar-foreground: 0 0% 95%; /* Light text on dark sidebar */
-    --sidebar-primary: 187 100% 42%; /* Accent (Cyan) for active items in sidebar */
-    --sidebar-primary-foreground: 0 0% 100%; /* White text on cyan */
+    --sidebar-primary: 231 48% 58%; /* Indigo for active items in sidebar */
+    --sidebar-primary-foreground: 0 0% 100%; /* White text on indigo */
     --sidebar-accent: 240 3.7% 15.9%; /* Hover bg for sidebar items */
     --sidebar-accent-foreground: 0 0% 98%; /* Hover text for sidebar items */
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 187 100% 42%;
+    --sidebar-ring: 231 48% 58%;
   }
 
   .dark {
@@ -74,7 +74,7 @@ body {
     --muted: 0 0% 14.9%;
     --muted-foreground: 0 0% 63.9%;
 
-    --accent: 187 90% 52%; /* Slightly adjusted cyan for dark mode */
+    --accent: 231 48% 65%; /* Lighter indigo for dark mode */
     --accent-foreground: 0 0% 9%;
 
     --destructive: 0 62.8% 30.6%;
@@ -93,12 +93,12 @@ body {
     /* Sidebar dark theme (can be same as light if sidebar is always dark) */
     --sidebar-background: 0 0% 3.9%; /* Even darker or same as main dark bg */
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 187 90% 52%; 
+    --sidebar-primary: 231 48% 65%; 
     --sidebar-primary-foreground: 0 0% 9%;
     --sidebar-accent: 0 0% 10%;
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 0 0% 10%;
-    --sidebar-ring: 187 90% 52%;
+    --sidebar-ring: 231 48% 65%;
   }
 }
 
@@ -113,7 +113,7 @@ body {
     flex-direction: column;
     background-image:
       radial-gradient(at 40% 20%, hsla(231, 48%, 48%, 0.03) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, hsla(187, 85%, 45%, 0.03) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, hsla(231, 48%, 58%, 0.03) 0px, transparent 50%),
       radial-gradient(at 0% 50%, hsla(231, 48%, 48%, 0.03) 0px, transparent 50%);
   }
 
@@ -627,5 +627,107 @@ body {
   .log-page-status-badge.skipped_disabled,
   .log-page-status-badge.skipped_no_association { 
     @apply bg-muted hover:bg-muted/80 text-muted-foreground !important; 
+  }
+
+  /* Swagger UI Dark Theme Integration */
+  .swagger-ui {
+    color: hsl(var(--foreground));
+  }
+
+  .swagger-ui .info .title {
+    color: hsl(var(--foreground));
+  }
+
+  .swagger-ui .info .title small {
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+  }
+
+  .swagger-ui .info p,
+  .swagger-ui .info li {
+    color: hsl(var(--foreground));
+  }
+
+  .swagger-ui .opblock-tag {
+    color: hsl(var(--foreground));
+  }
+
+  .swagger-ui .opblock .opblock-summary-method {
+    border-radius: 6px;
+  }
+
+  .swagger-ui .opblock .opblock-summary-path {
+    color: hsl(var(--foreground));
+  }
+
+  .swagger-ui .opblock .opblock-summary-description {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .swagger-ui .opblock-body pre {
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+  }
+
+  .swagger-ui .highlight-code pre {
+    background: hsl(var(--muted));
+    color: hsl(var(--foreground));
+  }
+
+  .swagger-ui .parameter__name,
+  .swagger-ui .parameter__type,
+  .swagger-ui .property-row .property {
+    color: hsl(var(--foreground));
+  }
+
+  .swagger-ui .response-col_description {
+    color: hsl(var(--foreground));
+  }
+
+  .swagger-ui .responses-inner h4,
+  .swagger-ui .responses-inner h5 {
+    color: hsl(var(--foreground));
+  }
+
+  .swagger-ui .model {
+    color: hsl(var(--foreground));
+  }
+
+  .swagger-ui .model-box {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+  }
+
+  .swagger-ui input[type="text"],
+  .swagger-ui input[type="email"],
+  .swagger-ui input[type="password"],
+  .swagger-ui textarea,
+  .swagger-ui select {
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+  }
+
+  .swagger-ui .btn.execute {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+  }
+
+  .swagger-ui .btn.execute:hover {
+    background: hsl(var(--primary) / 0.9);
+  }
+
+  .swagger-ui .btn.cancel {
+    background: transparent;
+    border-color: hsl(var(--border));
+    color: hsl(var(--foreground));
+  }
+
+  .swagger-ui .filter-container input {
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
   }
 }

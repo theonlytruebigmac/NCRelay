@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkIPAccess } from './lib/ip-access-control';
 
 // Rate limiting data store (in-memory for simplicity)
 // In a production environment with multiple instances, you'd use Redis or similar
@@ -71,6 +72,26 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
   
+  // Get client IP
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  const realIp = request.headers.get('x-real-ip'); 
+  const ip = forwardedFor?.split(',')[0].trim() || realIp || 'unknown';
+  
+  // Check IP access control (whitelist/blacklist)
+  // Note: tenant context may not be available here, so only global lists are checked
+  try {
+    const accessCheck = await checkIPAccess(ip);
+    if (!accessCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Access denied', reason: accessCheck.reason },
+        { status: 403 }
+      );
+    }
+  } catch (error) {
+    console.error('Error checking IP access:', error);
+    // Continue on error to avoid blocking all requests
+  }
+  
   // Load security settings
   const settings = getSecuritySettings();
   
@@ -79,12 +100,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // Get client IP
-  const forwardedFor = request.headers.get('x-forwarded-for');
-  const realIp = request.headers.get('x-real-ip'); 
-  const ip = forwardedFor?.split(',')[0].trim() || realIp || 'unknown';
-  
-  // Check if IP is in whitelist
+  // Check if IP is in whitelist (legacy environment variable whitelist)
   if (settings.ipWhitelist.includes(ip)) {
     return NextResponse.next();
   }

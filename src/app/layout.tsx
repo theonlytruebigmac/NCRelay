@@ -4,6 +4,7 @@ import { GeistMono } from 'geist/font/mono';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/context/AuthContext';
+import { TenantProvider } from '@/context/TenantContext';
 import { ThemeProviderWrapper } from '@/components/ThemeProviderWrapper';
 
 const geistSans = GeistSans;
@@ -25,10 +26,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
       >
         <AuthProvider>
-          <ThemeProviderWrapper>
-            {children}
-            <Toaster />
-          </ThemeProviderWrapper>
+          <TenantProvider>
+            <ThemeProviderWrapper>
+              {children}
+              <Toaster />
+            </ThemeProviderWrapper>
+          </TenantProvider>
         </AuthProvider>
       </body>
     </html>
