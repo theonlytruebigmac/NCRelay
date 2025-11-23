@@ -185,7 +185,7 @@ export default function UsersPage() {
     setIsSubmitting(true);
     try {
       // Check if the selected role is a built-in role or custom role
-      const builtInRoles = ['owner', 'admin', 'integration_manager', 'endpoint_manager', 'developer', 'viewer'];
+      const builtInRoles = ['owner', 'admin', 'billing_admin', 'integration_manager', 'endpoint_manager', 'developer', 'viewer'];
       const isBuiltInRole = builtInRoles.includes(addUserRole);
       
       // Find the role in availableRoles to get its ID if it's custom
@@ -584,30 +584,79 @@ export default function UsersPage() {
 
     setIsSubmitting(true);
     try {
-      const updateData: any = {
-        name: editUserName.trim(),
-        email: editUserEmail.trim(),
-        isAdmin: editUserIsAdmin,
-      };
-
-      // Only include password if it's been changed
-      if (editUserPassword && editUserPassword.trim()) {
-        updateData.password = editUserPassword;
+      const isEditingSelf = currentUser?.id === userToEdit.id;
+      
+      // Check if user is a tenant admin (needed for later logic)
+      const userRole = tenantUsers.find(u => u.userId === currentUser?.id)?.role;
+      const isTenantAdmin = userRole === 'admin' || userRole === 'owner';
+      
+      // Check what properties have changed
+      const hasChangedBasicProps = 
+        editUserName.trim() !== userToEdit.name ||
+        editUserEmail.trim() !== userToEdit.email;
+      
+      // If editing self and trying to change password/profile, redirect to Profile page
+      if (isEditingSelf && (editUserPassword && editUserPassword.trim())) {
+        toast({
+          title: "Use Profile Page",
+          description: "To update your password, please use the Profile page.",
+        });
+        setIsSubmitting(false);
+        return;
       }
+      
+      // System admins can update all properties via admin endpoint
+      if (currentUser?.isAdmin) {
+        const updateData: any = {
+          name: editUserName.trim(),
+          email: editUserEmail.trim(),
+          isAdmin: editUserIsAdmin,
+        };
 
-      const response = await fetch(`/api/admin/users/${userToEdit.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updateData),
-      });
+        // Only include password if it's been changed
+        if (editUserPassword && editUserPassword.trim()) {
+          updateData.password = editUserPassword;
+        }
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update user');
+        const response = await fetch(`/api/admin/users/${userToEdit.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateData),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to update user');
+        }
+      } else if (currentTenant) {
+        // Tenant admins can update basic user properties (name, email) but not password or isAdmin
+        // Non-admin users with users.manage can only update roles
+        const hasChangedAdminStatus = editUserIsAdmin !== userToEdit.isAdmin;
+        
+        if (hasChangedAdminStatus) {
+          toast({
+            variant: "destructive",
+            title: "Permission Denied",
+            description: "Only system administrators can change system admin status.",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+        
+        if (hasChangedBasicProps && !isTenantAdmin) {
+          toast({
+            variant: "destructive",
+            title: "Permission Denied",
+            description: "Only tenant administrators can update user names and emails.",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+        
       }
 
       // Update roles for all tenants (in global view) or current tenant
-      // Only if user has tenant memberships and we're in a tenant context
+      // For tenant admins, we can combine basic property updates with role updates
       const hasValidTenantRoles = Object.entries(userTenantRoles).some(([_, role]) => role && role.trim() !== '');
       
       if (hasValidTenantRoles && (currentTenant || Object.keys(userTenantRoles).length > 0)) {
@@ -621,15 +670,21 @@ export default function UsersPage() {
           
           try {
             // Check if this is a built-in role or custom role
-            const builtInRoles = ['owner', 'admin', 'integration_manager', 'endpoint_manager', 'developer', 'viewer'];
+            const builtInRoles = ['owner', 'admin', 'billing_admin', 'integration_manager', 'endpoint_manager', 'developer', 'viewer'];
             const isBuiltInRole = builtInRoles.includes(roleSlugOrId);
             
             // Find the role in availableRoles to get its ID if it's custom
             const selectedRole = availableRoles.find(r => r.slug === roleSlugOrId || r.id === roleSlugOrId);
             
-            const rolePayload = selectedRole && !selectedRole.isBuiltIn
+            const rolePayload: any = selectedRole && !selectedRole.isBuiltIn
               ? { customRoleId: selectedRole.id }
               : { role: roleSlugOrId };
+            
+            // For tenant admins in current tenant, include name/email updates in the same call
+            if (tenantId === currentTenant?.id && isTenantAdmin && hasChangedBasicProps) {
+              rolePayload.name = editUserName.trim();
+              rolePayload.email = editUserEmail.trim();
+            }
 
             const roleResponse = await fetch(
               `/api/tenants/${tenantId}/users/${userToEdit.id}`,
@@ -641,11 +696,28 @@ export default function UsersPage() {
             );
 
             if (!roleResponse.ok) {
-              console.error(`Failed to update user role in tenant ${tenantId}`);
+              console.error(`Failed to update user in tenant ${tenantId}`);
             }
           } catch (roleError) {
-            console.error(`Error updating tenant role for ${tenantId}:`, roleError);
+            console.error(`Error updating user in tenant ${tenantId}:`, roleError);
           }
+        }
+      } else if (currentTenant && isTenantAdmin && hasChangedBasicProps) {
+        // If only updating basic properties without role changes
+        const updateData: any = {
+          name: editUserName.trim(),
+          email: editUserEmail.trim(),
+        };
+        
+        const response = await fetch(`/api/tenants/${currentTenant.id}/users/${userToEdit.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateData),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to update user');
         }
       }
 
@@ -1002,6 +1074,7 @@ export default function UsersPage() {
                                 <SelectContent>
                                   <SelectItem value="owner">Owner</SelectItem>
                                   <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="billing_admin">Billing Admin</SelectItem>
                                   <SelectItem value="integration_manager">Integration Manager</SelectItem>
                                   <SelectItem value="endpoint_manager">Endpoint Manager</SelectItem>
                                   <SelectItem value="developer">Developer</SelectItem>
@@ -1053,6 +1126,7 @@ export default function UsersPage() {
                               <>
                                 <SelectItem value="owner">Owner</SelectItem>
                                 <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="billing_admin">Billing Admin</SelectItem>
                                 <SelectItem value="integration_manager">Integration Manager</SelectItem>
                                 <SelectItem value="endpoint_manager">Endpoint Manager</SelectItem>
                                 <SelectItem value="developer">Developer</SelectItem>
@@ -1459,6 +1533,7 @@ export default function UsersPage() {
                       <SelectItem value="developer">Developer</SelectItem>
                       <SelectItem value="endpoint_manager">Endpoint Manager</SelectItem>
                       <SelectItem value="integration_manager">Integration Manager</SelectItem>
+                      <SelectItem value="billing_admin">Billing Admin</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="owner">Owner</SelectItem>
                     </>

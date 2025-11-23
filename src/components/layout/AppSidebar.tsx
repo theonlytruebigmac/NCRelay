@@ -9,26 +9,13 @@ import { Logo } from "@/components/icons/Logo";
 import { AppSidebarNav } from "./AppSidebarNav";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { LogOut, UserCircle, KeyRound, Palette, ShieldCheck } from "lucide-react";
+import { LogOut, UserCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { TenantSwitcher } from "@/components/tenant/TenantSwitcher";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useTheme } from "@/context/ThemeContext";
 
 
 export function AppSidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
   const { user, logout } = useAuth();
-  const { theme, setTheme } = useTheme();
   
   return (
     <div className={cn("h-full border-r bg-sidebar text-sidebar-foreground", className)}>
@@ -48,50 +35,15 @@ export function AppSidebar({ className }: React.HTMLAttributes<HTMLDivElement>) 
             </div>
           )}
           <div className="space-y-1">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                >
-                  <UserCircle className="mr-2 h-4 w-4" />
-                  Profile
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Profile Settings</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/profile" className="cursor-pointer">
-                    <UserCircle className="mr-2 h-4 w-4" />
-                    User Profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings/password" className="cursor-pointer">
-                    <KeyRound className="mr-2 h-4 w-4" />
-                    Change Password
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <Palette className="mr-2 h-4 w-4" />
-                    Appearance
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    <DropdownMenuItem onClick={() => setTheme("light")}>
-                      Light
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setTheme("dark")}>
-                      Dark
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setTheme("system")}>
-                      System
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Link href="/dashboard/profile">
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              >
+                <UserCircle className="mr-2 h-4 w-4" />
+                Profile
+              </Button>
+            </Link>
             <Button 
               variant="ghost" 
               className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" 

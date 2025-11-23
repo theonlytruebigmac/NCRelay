@@ -11,6 +11,9 @@
     "start": "node server.js",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "validate": "bash scripts/validate-build.sh",
+    "test:docker": "bash scripts/test-docker-build-fast.sh",
+    "setup:hooks": "cp scripts/pre-commit.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit && echo '✓ Git hooks installed'",
     "migrate": "tsc --project tsconfig.migrations.json && node scripts/fix-migration-imports.js && node dist/migrations/index.js",
     "create-migration": "NODE_OPTIONS='--import ./loader.mjs --experimental-specifier-resolution=node' ts-node --esm scripts/create-migration.ts",
     "test": "jest"

@@ -1,43 +1,52 @@
 import { NextResponse } from 'next/server';
-import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 import { getDB } from '@/lib/db';
+import { requirePermission } from '@/lib/permission-middleware';
 
 export async function GET() {
-  // Verify admin session
-  const user = await getCurrentUser();
-  const admin = await isAdmin();
+  // Check permission to read logs/analytics (tenant admins and system admins)
+  const permission = await requirePermission('logs', 'read');
   
-  if (!user || !admin) {
+  if (!permission.allowed || !permission.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
   try {
     const db = await getDB();
+    const tenantId = permission.tenantId;
 
-    // Queue Statistics
-    const queueStats = db.prepare(`
-      SELECT
-        status,
-        COUNT(*) as count,
-        AVG(retryCount) as avgRetries
-      FROM notification_queue
-      GROUP BY status
-    `).all() as Array<{ status: string; count: number; avgRetries: number }>;
+    // Queue Statistics (filtered by tenant if not system admin)
+    const queueStatsQuery = tenantId
+      ? `SELECT status, COUNT(*) as count, AVG(retryCount) as avgRetries
+         FROM notification_queue nq
+         JOIN integrations i ON nq.integrationId = i.id
+         WHERE i.tenantId = ?
+         GROUP BY status`
+      : `SELECT status, COUNT(*) as count, AVG(retryCount) as avgRetries
+         FROM notification_queue
+         GROUP BY status`;
+    
+    const queueStats = (tenantId
+      ? db.prepare(queueStatsQuery).all(tenantId)
+      : db.prepare(queueStatsQuery).all()) as Array<{ status: string; count: number; avgRetries: number }>;
 
-    // Recent Activity (last 100 items, excluding GET requests that don't trigger integrations)
-    const recentActivity = db.prepare(`
-      SELECT
-        r.id,
-        r.timestamp,
-        r.incomingRequestMethod as method,
-        r.apiEndpointId,
-        r.apiEndpointName,
-        r.processingOverallStatus as status
-      FROM request_logs r
-      WHERE NOT (r.incomingRequestMethod = 'GET' AND r.processingOverallStatus = 'no_integrations_triggered')
-      ORDER BY r.timestamp DESC
-      LIMIT 100
-    `).all() as Array<{
+    // Recent Activity (last 100 items, excluding GET requests that don't trigger integrations, filtered by tenant)
+    const recentActivityQuery = tenantId
+      ? `SELECT r.id, r.timestamp, r.incomingRequestMethod as method, r.apiEndpointId, r.apiEndpointName, r.processingOverallStatus as status
+         FROM request_logs r
+         JOIN api_endpoints e ON r.apiEndpointId = e.id
+         WHERE e.tenantId = ? AND NOT (r.incomingRequestMethod = 'GET' AND r.processingOverallStatus = 'no_integrations_triggered')
+         ORDER BY r.timestamp DESC
+         LIMIT 100`
+      : `SELECT r.id, r.timestamp, r.incomingRequestMethod as method, r.apiEndpointId, r.apiEndpointName, r.processingOverallStatus as status
+         FROM request_logs r
+         WHERE NOT (r.incomingRequestMethod = 'GET' AND r.processingOverallStatus = 'no_integrations_triggered')
+         ORDER BY r.timestamp DESC
+         LIMIT 100`;
+    
+    const recentActivity = (tenantId
+      ? db.prepare(recentActivityQuery).all(tenantId)
+      : db.prepare(recentActivityQuery).all()) as Array<{
       id: string;
       timestamp: string;
       method: string;
@@ -46,22 +55,31 @@ export async function GET() {
       status: string;
     }>;
 
-    // Integration Health (last hour)
-    const integrationHealth = db.prepare(`
-      SELECT
-        i.id,
-        i.name,
-        i.platform,
-        i.enabled,
-        COUNT(CASE WHEN nq.status = 'failed' THEN 1 END) as failedCount,
-        COUNT(CASE WHEN nq.status = 'completed' THEN 1 END) as successCount,
-        COUNT(*) as totalCount
-      FROM integrations i
-      LEFT JOIN notification_queue nq ON nq.integrationId = i.id
-        AND nq.createdAt > datetime('now', '-1 hour')
-      GROUP BY i.id, i.name, i.platform, i.enabled
-      ORDER BY totalCount DESC
-    `).all() as Array<{
+    // Integration Health (last hour, filtered by tenant)
+    const integrationHealthQuery = tenantId
+      ? `SELECT i.id, i.name, i.platform, i.enabled,
+         COUNT(CASE WHEN nq.status = 'failed' THEN 1 END) as failedCount,
+         COUNT(CASE WHEN nq.status = 'completed' THEN 1 END) as successCount,
+         COUNT(*) as totalCount
+         FROM integrations i
+         LEFT JOIN notification_queue nq ON nq.integrationId = i.id
+           AND nq.createdAt > datetime('now', '-1 hour')
+         WHERE i.tenantId = ?
+         GROUP BY i.id, i.name, i.platform, i.enabled
+         ORDER BY totalCount DESC`
+      : `SELECT i.id, i.name, i.platform, i.enabled,
+         COUNT(CASE WHEN nq.status = 'failed' THEN 1 END) as failedCount,
+         COUNT(CASE WHEN nq.status = 'completed' THEN 1 END) as successCount,
+         COUNT(*) as totalCount
+         FROM integrations i
+         LEFT JOIN notification_queue nq ON nq.integrationId = i.id
+           AND nq.createdAt > datetime('now', '-1 hour')
+         GROUP BY i.id, i.name, i.platform, i.enabled
+         ORDER BY totalCount DESC`;
+    
+    const integrationHealth = (tenantId
+      ? db.prepare(integrationHealthQuery).all(tenantId)
+      : db.prepare(integrationHealthQuery).all()) as Array<{
       id: string;
       name: string;
       platform: string;
@@ -71,19 +89,23 @@ export async function GET() {
       totalCount: number;
     }>;
 
-    // Active Endpoints Count
-    const activeEndpoints = db.prepare(`
-      SELECT COUNT(*) as count
-      FROM api_endpoints
-      WHERE enabled = 1
-    `).get() as { count: number };
+    // Active Endpoints Count (filtered by tenant)
+    const activeEndpointsQuery = tenantId
+      ? `SELECT COUNT(*) as count FROM api_endpoints WHERE enabled = 1 AND tenantId = ?`
+      : `SELECT COUNT(*) as count FROM api_endpoints WHERE enabled = 1`;
+    
+    const activeEndpoints = (tenantId
+      ? db.prepare(activeEndpointsQuery).get(tenantId)
+      : db.prepare(activeEndpointsQuery).get()) as { count: number };
 
-    // Total Integrations Count
-    const totalIntegrations = db.prepare(`
-      SELECT COUNT(*) as count
-      FROM integrations
-      WHERE enabled = 1
-    `).get() as { count: number };
+    // Total Integrations Count (filtered by tenant)
+    const totalIntegrationsQuery = tenantId
+      ? `SELECT COUNT(*) as count FROM integrations WHERE enabled = 1 AND tenantId = ?`
+      : `SELECT COUNT(*) as count FROM integrations WHERE enabled = 1`;
+    
+    const totalIntegrations = (tenantId
+      ? db.prepare(totalIntegrationsQuery).get(tenantId)
+      : db.prepare(totalIntegrationsQuery).get()) as { count: number };
 
     // System Metrics
     const systemMetrics = {

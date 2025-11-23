@@ -26,12 +26,23 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { secret, token } = VerifySchema.parse(body);
 
-    // Verify the token
-    const isValid = verifyTwoFactorToken(secret, token);
+    // Verify the token with debug logging
+    const isValid = verifyTwoFactorToken(secret, token, true);
     
     if (!isValid) {
+      // Return server time to help debug clock sync issues
+      const serverTime = new Date().toISOString();
+      console.warn('2FA verification failed during enrollment', {
+        userId: user.id,
+        serverTime,
+        providedTokenLength: token.length,
+      });
+      
       return NextResponse.json(
-        { error: 'Invalid verification code' },
+        { 
+          error: 'Invalid verification code. Please ensure your device time is synchronized and try again.',
+          serverTime,
+        },
         { status: 400 }
       );
     }

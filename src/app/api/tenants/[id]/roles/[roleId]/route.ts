@@ -223,7 +223,7 @@ export async function DELETE(
     const { id: tenantId, roleId } = await params;
     const db = await getDB();
 
-    // Check if user has permission (owner only)
+    // Check if user has permission (owner or admin)
     const membership = db.prepare(`
       SELECT role FROM tenant_users 
       WHERE tenantId = ? AND userId = ?
@@ -233,8 +233,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    if (!user.isAdmin && membership.role !== 'owner') {
-      return NextResponse.json({ error: 'Only owners can delete roles' }, { status: 403 });
+    if (!user.isAdmin && membership.role !== 'owner' && membership.role !== 'admin') {
+      return NextResponse.json({ error: 'Only owners and admins can delete roles' }, { status: 403 });
     }
 
     // Get role

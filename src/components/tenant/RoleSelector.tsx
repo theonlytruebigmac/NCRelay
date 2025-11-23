@@ -33,6 +33,11 @@ const roleInfo: Record<TenantUserRole, { label: string; description: string; ico
     description: 'Manage users, endpoints, integrations, and settings (except billing)',
     icon: <ShieldAlert className="h-4 w-4" />,
   },
+  billing_admin: {
+    label: 'Billing Admin',
+    description: 'Manage billing and payments, view resources (read-only)',
+    icon: <Shield className="h-4 w-4" />,
+  },
   integration_manager: {
     label: 'Integration Manager',
     description: 'Create and manage integrations, field filters, and templates',
@@ -154,6 +159,7 @@ export function RoleBadge({ role }: { role: TenantUserRole }) {
   const colorClass = {
     owner: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
     admin: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    billing_admin: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
     integration_manager: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
     endpoint_manager: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     developer: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',

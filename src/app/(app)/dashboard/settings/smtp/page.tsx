@@ -32,7 +32,7 @@ export default function SmtpSettingsPage() {
   const [useTLS, setUseTLS] = useState(true);
   const [testEmail, setTestEmail] = useState('');
 
-  const canManageSettings = can('settings', 'manage');
+  const canManageSettings = can('settings', 'update');
 
   useEffect(() => {
     if (currentTenant) {
@@ -251,18 +251,19 @@ export default function SmtpSettingsPage() {
 
   return (
     <PageShell
-      title="SMTP Settings"
-      description="Configure email server settings for this tenant"
+      title="Tenant SMTP Settings"
+      description="Configure email server settings for your tenant's notifications"
     >
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
-            Email Server Configuration
+            Tenant Email Configuration
           </CardTitle>
           <CardDescription>
-            Configure SMTP settings to send emails from this tenant. These settings are used for
-            password resets, notifications, and welcome emails.
+            Configure SMTP settings for this tenant's notifications and alerts. These settings are used only
+            for tenant-specific emails. System-wide alerts and password resets use the global SMTP configuration.
+            If not configured, the system will fall back to global SMTP settings.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -11,6 +11,10 @@ const SecuritySettingsSchema = z.object({
   passwordRequireLowercase: z.boolean().optional(),
   passwordRequireNumbers: z.boolean().optional(),
   passwordRequireSymbols: z.boolean().optional(),
+  passwordMinUppercase: z.number().min(0).max(10).optional(),
+  passwordMinLowercase: z.number().min(0).max(10).optional(),
+  passwordMinNumbers: z.number().min(0).max(10).optional(),
+  passwordMinSymbols: z.number().min(0).max(10).optional(),
   sessionTimeoutMinutes: z.number().min(5).max(10080).optional(), // 5 min to 1 week
   maxFailedLoginAttempts: z.number().min(3).max(20).optional(),
   lockoutDurationMinutes: z.number().min(5).max(1440).optional(), // 5 min to 24 hours
@@ -49,6 +53,10 @@ export async function GET(
         passwordRequireLowercase: false,
         passwordRequireNumbers: false,
         passwordRequireSymbols: false,
+        passwordMinUppercase: 0,
+        passwordMinLowercase: 0,
+        passwordMinNumbers: 0,
+        passwordMinSymbols: 0,
         sessionTimeoutMinutes: 480,
         maxFailedLoginAttempts: 5,
         lockoutDurationMinutes: 15,

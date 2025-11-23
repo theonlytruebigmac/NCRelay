@@ -184,7 +184,7 @@ export default function SessionsPage() {
   if (loading) {
     return (
       <PageShell
-        title="Active Sessions"
+        title="Sessions"
         description="Manage devices and locations where you're currently logged in"
       >
         <div className="flex items-center justify-center">
@@ -196,7 +196,7 @@ export default function SessionsPage() {
 
   return (
     <PageShell
-      title="Active Sessions"
+      title="Sessions"
       description="Manage devices and locations where you're currently logged in"
     >
       <div className="space-y-6">
@@ -231,7 +231,7 @@ export default function SessionsPage() {
         <CardContent>
           {sessions.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No active sessions found
+              No sessions found
             </div>
           ) : (
             <div className="overflow-x-auto">

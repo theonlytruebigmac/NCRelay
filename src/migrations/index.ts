@@ -31,6 +31,9 @@ import migration024 from './024-add-session-token';
 import migration025 from './025-add-password-policy-columns';
 import migration026 from './026-add-tenant-rate-limiting';
 import migration027 from './027-add-ip-access-control';
+import * as migration028 from './028-add-tenant-smtp-settings';
+import * as migration035 from './035-add-password-count-requirements';
+import * as migration036 from './036-add-billing-admin-role';
 // Add new migration imports here...
 
 const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/app.db' : path.join(process.cwd(), 'app.db');
@@ -198,6 +201,19 @@ function getAllMigrations(): Migration[] {
       name: migration027.name || 'add-ip-access-control',
       up: migration027.up,
       down: migration027.down
+    },
+    migration028,
+    {
+      id: 35,
+      name: migration035.name || 'add-password-count-requirements',
+      up: migration035.up,
+      down: migration035.down
+    },
+    {
+      id: 36,
+      name: migration036.name || 'add-billing-admin-role',
+      up: migration036.up,
+      down: migration036.down
     }
   ];
 

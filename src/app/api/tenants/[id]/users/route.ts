@@ -21,7 +21,7 @@ const AddUserSchema = z.object({
 });
 
 const UpdateUserRoleSchema = z.object({
-  role: z.enum(['owner', 'admin', 'integration_manager', 'endpoint_manager', 'developer', 'viewer']),
+  role: z.enum(['owner', 'admin', 'billing_admin', 'integration_manager', 'endpoint_manager', 'developer', 'viewer']),
 });
 
 // GET /api/tenants/[id]/users - List users in tenant
@@ -136,7 +136,7 @@ export async function POST(
       customRoleId = validatedData.customRoleId;
       builtInRole = undefined;
     } else if (validatedData.role) {
-      const builtInRoles = ['owner', 'admin', 'integration_manager', 'endpoint_manager', 'developer', 'viewer'];
+      const builtInRoles = ['owner', 'admin', 'billing_admin', 'integration_manager', 'endpoint_manager', 'developer', 'viewer'];
       if (builtInRoles.includes(validatedData.role)) {
         builtInRole = validatedData.role;
       } else {

@@ -9,6 +9,10 @@ interface TenantSecuritySettings {
   passwordRequireLowercase: boolean;
   passwordRequireNumbers: boolean;
   passwordRequireSymbols: boolean;
+  passwordMinUppercase: number;
+  passwordMinLowercase: number;
+  passwordMinNumbers: number;
+  passwordMinSymbols: number;
   sessionTimeoutMinutes: number;
   maxFailedLoginAttempts: number;
   lockoutDurationMinutes: number;
@@ -42,6 +46,10 @@ export async function getTenantSecuritySettings(tenantId: string): Promise<Tenan
     passwordRequireLowercase: !!settings.passwordRequireLowercase,
     passwordRequireNumbers: !!settings.passwordRequireNumbers,
     passwordRequireSymbols: !!settings.passwordRequireSymbols,
+    passwordMinUppercase: settings.passwordMinUppercase || 0,
+    passwordMinLowercase: settings.passwordMinLowercase || 0,
+    passwordMinNumbers: settings.passwordMinNumbers || 0,
+    passwordMinSymbols: settings.passwordMinSymbols || 0,
     sessionTimeoutMinutes: settings.sessionTimeoutMinutes || 480,
     maxFailedLoginAttempts: settings.maxFailedLoginAttempts || 5,
     lockoutDurationMinutes: settings.lockoutDurationMinutes || 15,
@@ -72,6 +80,10 @@ export async function upsertTenantSecuritySettings(
     passwordRequireLowercase: settings.passwordRequireLowercase ?? currentSettings?.passwordRequireLowercase ?? false,
     passwordRequireNumbers: settings.passwordRequireNumbers ?? currentSettings?.passwordRequireNumbers ?? false,
     passwordRequireSymbols: settings.passwordRequireSymbols ?? currentSettings?.passwordRequireSymbols ?? false,
+    passwordMinUppercase: settings.passwordMinUppercase ?? currentSettings?.passwordMinUppercase ?? 0,
+    passwordMinLowercase: settings.passwordMinLowercase ?? currentSettings?.passwordMinLowercase ?? 0,
+    passwordMinNumbers: settings.passwordMinNumbers ?? currentSettings?.passwordMinNumbers ?? 0,
+    passwordMinSymbols: settings.passwordMinSymbols ?? currentSettings?.passwordMinSymbols ?? 0,
     sessionTimeoutMinutes: settings.sessionTimeoutMinutes ?? currentSettings?.sessionTimeoutMinutes ?? 480,
     maxFailedLoginAttempts: settings.maxFailedLoginAttempts ?? currentSettings?.maxFailedLoginAttempts ?? 5,
     lockoutDurationMinutes: settings.lockoutDurationMinutes ?? currentSettings?.lockoutDurationMinutes ?? 15,
@@ -85,11 +97,12 @@ export async function upsertTenantSecuritySettings(
     INSERT INTO tenant_security_settings (
       tenantId, enforce2FA, require2FAForAdmins, passwordMinLength,
       passwordRequireUppercase, passwordRequireLowercase, passwordRequireNumbers,
-      passwordRequireSymbols, sessionTimeoutMinutes, maxFailedLoginAttempts,
-      lockoutDurationMinutes, rateLimitEnabled, rateLimitMaxRequests,
-      rateLimitWindowMs, rateLimitIpWhitelist
+      passwordRequireSymbols, passwordMinUppercase, passwordMinLowercase,
+      passwordMinNumbers, passwordMinSymbols, sessionTimeoutMinutes,
+      maxFailedLoginAttempts, lockoutDurationMinutes, rateLimitEnabled,
+      rateLimitMaxRequests, rateLimitWindowMs, rateLimitIpWhitelist
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(tenantId) DO UPDATE SET
       enforce2FA = excluded.enforce2FA,
       require2FAForAdmins = excluded.require2FAForAdmins,
@@ -98,6 +111,10 @@ export async function upsertTenantSecuritySettings(
       passwordRequireLowercase = excluded.passwordRequireLowercase,
       passwordRequireNumbers = excluded.passwordRequireNumbers,
       passwordRequireSymbols = excluded.passwordRequireSymbols,
+      passwordMinUppercase = excluded.passwordMinUppercase,
+      passwordMinLowercase = excluded.passwordMinLowercase,
+      passwordMinNumbers = excluded.passwordMinNumbers,
+      passwordMinSymbols = excluded.passwordMinSymbols,
       sessionTimeoutMinutes = excluded.sessionTimeoutMinutes,
       maxFailedLoginAttempts = excluded.maxFailedLoginAttempts,
       lockoutDurationMinutes = excluded.lockoutDurationMinutes,
@@ -114,6 +131,10 @@ export async function upsertTenantSecuritySettings(
     finalSettings.passwordRequireLowercase ? 1 : 0,
     finalSettings.passwordRequireNumbers ? 1 : 0,
     finalSettings.passwordRequireSymbols ? 1 : 0,
+    finalSettings.passwordMinUppercase,
+    finalSettings.passwordMinLowercase,
+    finalSettings.passwordMinNumbers,
+    finalSettings.passwordMinSymbols,
     finalSettings.sessionTimeoutMinutes,
     finalSettings.maxFailedLoginAttempts,
     finalSettings.lockoutDurationMinutes,

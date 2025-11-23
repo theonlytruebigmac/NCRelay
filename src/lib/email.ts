@@ -45,8 +45,8 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
 
   // Fall back to system SMTP if tenant SMTP not available
   if (!transporter) {
-    transporter = await getTransporter();
-    const settings = await db.getSmtpSettings();
+    transporter = await getTransporter(null, false); // Get global SMTP
+    const settings = await db.getSmtpSettings(null, false);
     if (settings) {
       fromAddress = settings.fromEmail || fromAddress;
     }
@@ -66,11 +66,16 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
   });
 }
 
-async function getTransporter(): Promise<nodemailer.Transporter | null> {
-  const settings = await db.getSmtpSettings();
+/**
+ * Get transporter for a specific tenant, with fallback to global SMTP
+ * @param tenantId - Optional tenant ID to get tenant-specific SMTP
+ * @param fallbackToGlobal - If true, fall back to global SMTP if tenant config not found
+ */
+async function getTransporter(tenantId?: string | null, fallbackToGlobal: boolean = true): Promise<nodemailer.Transporter | null> {
+  const settings = await db.getSmtpSettings(tenantId, fallbackToGlobal);
   if (!settings || !settings.host || !settings.user || !settings.fromEmail || !settings.appBaseUrl) {
     console.warn(
-      'SMTP settings are not fully configured in the database. Email sending will be disabled.'
+      `SMTP settings are not fully configured${tenantId ? ` for tenant ${tenantId}` : ' (global)'}. Email sending will be disabled.`
     );
     return null;
   }
@@ -88,12 +93,16 @@ async function getTransporter(): Promise<nodemailer.Transporter | null> {
   });
 }
 
+/**
+ * Send password reset email using global SMTP (not tenant-specific)
+ * Password resets are system-level operations
+ */
 export async function sendPasswordResetEmail(to: string, token: string): Promise<void> {
-  const transporter = await getTransporter();
-  const settings = await db.getSmtpSettings(); // Fetch settings again for appBaseUrl and fromEmail
+  const transporter = await getTransporter(null, false); // Use global SMTP only
+  const settings = await db.getSmtpSettings(null, false); // Fetch global settings
 
   if (!transporter || !settings || !settings.fromEmail || !settings.appBaseUrl) {
-    console.error('Email service is not configured or appBaseUrl/fromEmail is missing. Cannot send password reset email.');
+    console.error('Global SMTP is not configured or appBaseUrl/fromEmail is missing. Cannot send password reset email.');
     throw new Error('Email service not configured or essential settings missing.');
   }
 
@@ -118,6 +127,10 @@ export async function sendPasswordResetEmail(to: string, token: string): Promise
   }
 }
 
+/**
+ * Send notification failure email using tenant SMTP if available, fallback to global
+ * @param tenantId - Optional tenant ID to use tenant-specific SMTP
+ */
 export async function sendNotificationFailureEmail(
   to: string,
   notificationDetails: {
@@ -128,10 +141,11 @@ export async function sendNotificationFailureEmail(
     retryCount: number;
     maxRetries: number;
     timestamp: string;
-  }
+  },
+  tenantId?: string | null
 ): Promise<void> {
-  const transporter = await getTransporter();
-  const settings = await db.getSmtpSettings();
+  const transporter = await getTransporter(tenantId, true); // Use tenant SMTP with fallback to global
+  const settings = await db.getSmtpSettings(tenantId, true); // Get tenant settings with fallback
 
   if (!transporter || !settings || !settings.fromEmail || !settings.appBaseUrl) {
     console.error('Email service is not configured. Cannot send notification failure email.');
@@ -294,6 +308,10 @@ export async function sendNotificationFailureEmail(
   }
 }
 
+/**
+ * Send notification digest email using tenant SMTP if available, fallback to global
+ * @param tenantId - Optional tenant ID to use tenant-specific SMTP
+ */
 export async function sendNotificationDigestEmail(
   to: string,
   period: string,
@@ -302,10 +320,11 @@ export async function sendNotificationDigestEmail(
     successfulNotifications: number;
     failedNotifications: number;
     topIntegrations: Array<{ name: string; count: number }>;
-  }
+  },
+  tenantId?: string | null
 ): Promise<void> {
-  const transporter = await getTransporter();
-  const settings = await db.getSmtpSettings();
+  const transporter = await getTransporter(tenantId, true); // Use tenant SMTP with fallback to global
+  const settings = await db.getSmtpSettings(tenantId, true); // Get tenant settings with fallback
 
   if (!transporter || !settings || !settings.fromEmail || !settings.appBaseUrl) {
     console.error('Email service is not configured. Cannot send notification digest email.');

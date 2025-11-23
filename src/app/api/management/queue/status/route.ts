@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/permission-middleware';
 import { isQueueProcessingEnabled, setQueueProcessingEnabled } from '@/lib/system-settings';
 
 /**
  * API route for queue processing status
+ * GET: Tenant admins can view status
+ * POST: Only system admins can modify status
  */
 export async function GET() {
   try {
-    // Check if user is admin
-    const isUserAdmin = await isAdmin();
-    if (!isUserAdmin) {
+    // Check permission to read logs (tenant admins and system admins)
+    const permission = await requirePermission('logs', 'read');
+    
+    if (!permission.allowed || !permission.user) {
       return NextResponse.json(
-        { error: 'Unauthorized. Admin access required.' },
+        { error: 'Unauthorized' },
         { status: 403 }
       );
     }

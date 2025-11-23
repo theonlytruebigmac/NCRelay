@@ -5,7 +5,7 @@ import { PageShell } from "@/components/layout/PageShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
-import { Shield, Filter, RefreshCw, Loader2, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Shield, Filter, RefreshCw, Loader2, Search, ChevronLeft, ChevronRight, History } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Select,
@@ -192,7 +192,7 @@ export default function AuditLogsPage() {
             Filters
           </CardTitle>
           <CardDescription>
-            Filter audit logs by action, date range, or user
+            Filter logs by action, date range, or user
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -253,8 +253,8 @@ export default function AuditLogsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Audit Logs ({pagination.total})
+            <History className="h-5 w-5" />
+            Logs ({pagination.total})
           </CardTitle>
           <CardDescription>
             Security events and user activity records
@@ -267,7 +267,7 @@ export default function AuditLogsPage() {
             </div>
           ) : logs.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
-              No audit logs found
+              No logs found
             </div>
           ) : (
             <>

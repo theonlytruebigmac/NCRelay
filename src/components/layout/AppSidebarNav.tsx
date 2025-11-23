@@ -34,8 +34,8 @@ export function AppSidebarNav({ items, className, isMobile = false }: AppSidebar
         return null;
       }
       
-      // Filter "Tenant Settings" - hide from system admins
-      if (group.title === "Tenant Settings" && user?.isAdmin) {
+      // Filter "Settings" (tenant settings) - hide from system admins
+      if (group.title === "Settings" && user?.isAdmin) {
         return null;
       }
       
@@ -55,6 +55,9 @@ export function AppSidebarNav({ items, className, isMobile = false }: AppSidebar
     })
     .filter((group): group is NavGroup => group !== null && group.items.length > 0);
   
+  // Get all nav hrefs for matching logic
+  const allHrefs = filteredItems.flatMap(group => group.items.map(item => item.href));
+  
   const NavLinkContent = ({ item }: { item: NavItem }) => (
     <>
       {item.icon && <item.icon className="mr-2 h-4 w-4" />}
@@ -64,10 +67,28 @@ export function AppSidebarNav({ items, className, isMobile = false }: AppSidebar
 
   const NavLink = ({ item }: { item: NavItem }) => {
     const linkContent = <NavLinkContent item={item} />;
+    
+    // Check if current route is active
+    // Priority: exact match first, then check if it's the most specific matching prefix
+    let isActive = false;
+    
+    if (pathname === item.href) {
+      // Exact match
+      isActive = true;
+    } else if (item.href !== "/" && pathname.startsWith(item.href + "/")) {
+      // Check if there's a more specific route that matches better
+      const moreSpecificMatch = allHrefs.some(href => 
+        href !== item.href && 
+        href.startsWith(item.href) && 
+        pathname.startsWith(href)
+      );
+      isActive = !moreSpecificMatch;
+    }
+    
     const linkClasses = cn(
       buttonVariants({ variant: "ghost" }),
       "w-full justify-start",
-      pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
+      isActive
         ? "bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/90"
         : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
     );

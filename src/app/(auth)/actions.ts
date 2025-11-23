@@ -191,7 +191,7 @@ export async function logoutAction(): Promise<void> {
   }
   
   await removeAuthCookie();
-  redirect('/login');
+  // Don't redirect here - let the client-side AuthContext handle the redirect to landing page
 }
 
 

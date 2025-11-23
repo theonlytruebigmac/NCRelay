@@ -297,6 +297,22 @@ export async function POST(
     const clientIP = getClientIP(request);
     if (!isIPAllowedForEndpoint(clientIP, endpointConfig.ipWhitelist || [])) {
       console.log(`[${endpointConfig.name}] IP ${clientIP} not in endpoint whitelist`);
+      
+      // Log to audit log
+      const { logSecurityEvent } = await import('@/lib/audit-log');
+      await logSecurityEvent('endpoint_access_denied', {
+        tenantId: tenant.id,
+        ipAddress: clientIP,
+        userAgent: request.headers.get('user-agent') || undefined,
+        details: {
+          endpointId: endpointConfig.id,
+          endpointName: endpointConfig.name,
+          reason: 'IP not in whitelist',
+          whitelistedIPs: endpointConfig.ipWhitelist || [],
+          method: 'POST'
+        }
+      });
+      
       await addRequestLog({
         ...currentLogEntryPartial,
         processingSummary: { 
@@ -807,6 +823,22 @@ export async function GET(
   // Check IP whitelist for this specific endpoint
   if (!isIPAllowedForEndpoint(clientIP, endpointConfig.ipWhitelist || [])) {
     console.log(`[${endpointConfig.name}] GET request: IP ${clientIP} not in endpoint whitelist`);
+    
+    // Log to audit log
+    const { logSecurityEvent } = await import('@/lib/audit-log');
+    await logSecurityEvent('endpoint_access_denied', {
+      tenantId: tenant.id,
+      ipAddress: clientIP,
+      userAgent: request.headers.get('user-agent') || undefined,
+      details: {
+        endpointId: endpointConfig.id,
+        endpointName: endpointConfig.name,
+        reason: 'IP not in whitelist',
+        whitelistedIPs: endpointConfig.ipWhitelist || [],
+        method: 'GET'
+      }
+    });
+    
     await addRequestLog({
       ...currentLogEntryPartial,
       processingSummary: { 

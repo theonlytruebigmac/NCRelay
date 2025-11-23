@@ -59,6 +59,7 @@ export async function verifyTenantAccess(
     developer: 20,
     endpoint_manager: 40,
     integration_manager: 40,
+    billing_admin: 50,
     admin: 60,
     owner: 80,
   };

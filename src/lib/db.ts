@@ -11,6 +11,7 @@ const SMTP_SETTINGS_ID = 'default_settings';
 
 let db: Database.Database;
 let isInitialized = false;
+let migrationPromise: Promise<void> | null = null;
 
 async function createBuildTimeSchema(tempDb: Database.Database) {
   // Create minimal schema for build time
@@ -89,25 +90,34 @@ export async function getDB(): Promise<Database.Database> {
 
 // Modified to use migration system
 async function initializeDBSchema() {
-  try {
-    // Run migrations on application startup
-    // Note: For a production environment, you might want to run migrations
-    // separately from your application startup (using npm run migrate)
-    
-    // Only run migrations in development
-    if (process.env.NODE_ENV === 'development') {
-      // Dynamic import to avoid bundling migrations in Next.js build
-      const { runMigrations } = await import('../migrations');
-      await runMigrations();
-    }
-    
-    // For production, migrations should be run separately using:
-    // npm run migrate
-    
-  } catch (error) {
-    console.error('Failed to run migrations during app startup:', error);
-    // Don't throw - app should continue as migration CLI can be used to resolve issues
+  // Use a promise to ensure migrations only run once across all requests
+  if (!migrationPromise) {
+    migrationPromise = (async () => {
+      try {
+        // Run migrations on application startup
+        // Note: For a production environment, you might want to run migrations
+        // separately from your application startup (using npm run migrate)
+        
+        // Only run migrations in development
+        if (process.env.NODE_ENV === 'development') {
+          // Dynamic import to avoid bundling migrations in Next.js build
+          const { runMigrations } = await import('../migrations');
+          await runMigrations();
+        }
+        
+        // For production, migrations should be run separately using:
+        // npm run migrate
+        
+      } catch (error) {
+        console.error('Failed to run migrations during app startup:', error);
+        // Reset promise on error so it can be retried
+        migrationPromise = null;
+        // Don't throw - app should continue as migration CLI can be used to resolve issues
+      }
+    })();
   }
+  
+  return migrationPromise;
 }
 
 async function createInitialAdminUserIfNotExists() {
@@ -869,41 +879,106 @@ export async function getDashboardStats(tenantId?: string): Promise<{
 }
 
 // --- SMTP Settings ---
-export async function getSmtpSettings(): Promise<SmtpSettings | null> {
+
+/**
+ * Get SMTP settings for a tenant or global settings
+ * @param tenantId - Optional tenant ID. If null/undefined, returns global settings.
+ *                   If provided, returns tenant-specific settings (or null if not found).
+ * @param fallbackToGlobal - If true and tenant settings not found, return global settings
+ */
+export async function getSmtpSettings(tenantId?: string | null, fallbackToGlobal: boolean = false): Promise<SmtpSettings | null> {
   const db = await getDB();
-  const stmt = db.prepare('SELECT * FROM smtp_settings WHERE id = ?');
-  const row = stmt.get(SMTP_SETTINGS_ID) as Record<string, unknown> | undefined;
-  if (!row) return null;
+  
+  if (tenantId) {
+    // Look for tenant-specific settings
+    const tenantStmt = db.prepare('SELECT * FROM smtp_settings WHERE tenantId = ?');
+    const tenantRow = tenantStmt.get(tenantId) as Record<string, unknown> | undefined;
+    
+    if (tenantRow) {
+      return {
+        id: tenantRow.id as string,
+        host: tenantRow.host as string,
+        port: Number(tenantRow.port),
+        user: tenantRow.user as string,
+        password: tenantRow.password ? await decrypt(tenantRow.password as string) : undefined,
+        secure: !!tenantRow.secure,
+        fromEmail: tenantRow.fromEmail as string,
+        appBaseUrl: tenantRow.appBaseUrl as string,
+        tenantId: tenantRow.tenantId as string
+      };
+    }
+    
+    // If tenant settings not found and fallback enabled, return global
+    if (!tenantRow && fallbackToGlobal) {
+      return getSmtpSettings(null, false);
+    }
+    
+    return null;
+  }
+  
+  // Get global settings (tenantId IS NULL)
+  const globalStmt = db.prepare('SELECT * FROM smtp_settings WHERE tenantId IS NULL LIMIT 1');
+  const globalRow = globalStmt.get() as Record<string, unknown> | undefined;
+  
+  if (!globalRow) return null;
+  
   return {
-    id: row.id as string,
-    host: row.host as string,
-    port: Number(row.port),
-    user: row.user as string,
-    password: row.password ? await decrypt(row.password as string) : undefined,
-    secure: !!row.secure,
-    fromEmail: row.fromEmail as string,
-    appBaseUrl: row.appBaseUrl as string
+    id: globalRow.id as string,
+    host: globalRow.host as string,
+    port: Number(globalRow.port),
+    user: globalRow.user as string,
+    password: globalRow.password ? await decrypt(globalRow.password as string) : undefined,
+    secure: !!globalRow.secure,
+    fromEmail: globalRow.fromEmail as string,
+    appBaseUrl: globalRow.appBaseUrl as string,
+    tenantId: null
   };
 }
 
+/**
+ * Save SMTP settings for a tenant or globally
+ * @param settings - SMTP settings to save
+ */
 export async function saveSmtpSettings(settings: SmtpSettings): Promise<void> {
   const db = await getDB();
   const encryptedPassword = settings.password ? await encrypt(settings.password) : '';
+  
+  // Generate ID if not provided
+  const id = settings.id || (settings.tenantId ? `smtp_${settings.tenantId}` : SMTP_SETTINGS_ID);
+  
   const stmt = db.prepare(
     `INSERT OR REPLACE INTO smtp_settings (
-      id, host, port, user, password, secure, fromEmail, appBaseUrl
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      id, host, port, user, password, secure, fromEmail, appBaseUrl, tenantId
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
+  
   stmt.run(
-    SMTP_SETTINGS_ID,
+    id,
     settings.host,
     settings.port,
     settings.user,
     encryptedPassword,
     settings.secure ? 1 : 0,
     settings.fromEmail,
-    settings.appBaseUrl
+    settings.appBaseUrl,
+    settings.tenantId || null
   );
+}
+
+/**
+ * Delete SMTP settings for a specific tenant or global
+ * @param tenantId - Tenant ID to delete settings for. If null, deletes global settings.
+ */
+export async function deleteSmtpSettings(tenantId?: string | null): Promise<void> {
+  const db = await getDB();
+  
+  if (tenantId) {
+    const stmt = db.prepare('DELETE FROM smtp_settings WHERE tenantId = ?');
+    stmt.run(tenantId);
+  } else {
+    const stmt = db.prepare('DELETE FROM smtp_settings WHERE tenantId IS NULL');
+    stmt.run();
+  }
 }
 
 // Field Filter Functions

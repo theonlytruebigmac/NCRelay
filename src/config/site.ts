@@ -48,12 +48,6 @@ export const siteConfig = {
           icon: LayoutDashboard,
         },
         {
-          title: "Live Monitor",
-          href: "/dashboard/monitor",
-          icon: Activity,
-          requiredPermission: { resource: 'logs', action: 'read' },
-        },
-        {
           title: "Queue",
           href: "/dashboard/queue",
           icon: ListOrdered,
@@ -93,13 +87,13 @@ export const siteConfig = {
       title: "Security Center",
       items: [
         {
-          title: "Audit Logs",
+          title: "Logs",
           href: "/dashboard/audit-logs",
           icon: History,
           requiredPermission: { resource: 'logs', action: 'read' },
         },
         {
-          title: "Active Sessions",
+          title: "Sessions",
           href: "/dashboard/settings/sessions",
           icon: Shield,
           requiredPermission: { resource: 'settings', action: 'read' },
@@ -125,7 +119,7 @@ export const siteConfig = {
       ]
     },
     {
-      title: "Tenant Settings",
+      title: "Settings",
       items: [
         {
           title: "Notifications",
@@ -137,7 +131,7 @@ export const siteConfig = {
           title: "SMTP Config",
           href: "/dashboard/settings/smtp",
           icon: Mail,
-          requiredPermission: { resource: 'settings', action: 'manage' },
+          requiredPermission: { resource: 'settings', action: 'update' },
         }
       ]
     },
@@ -145,14 +139,14 @@ export const siteConfig = {
       title: "Admin Settings",
       items: [
         {
-          title: "SMTP Config",
-          href: "/dashboard/settings/smtp",
+          title: "Global SMTP",
+          href: "/dashboard/admin/smtp",
           icon: Mail,
           systemAdminOnly: true,
           requiredPermission: { resource: 'settings', action: 'manage' },
         },
         {
-          title: "Notifications",
+          title: "System Notifications",
           href: "/dashboard/settings/notifications",
           icon: Bell,
           systemAdminOnly: true,

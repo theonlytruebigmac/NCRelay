@@ -51,9 +51,16 @@ type SmtpSettingsFormValues = z.infer<typeof smtpSettingsSchema>;
 interface SmtpSettingsFormProps {
   initialData: SmtpSettings | null;
   onFormSubmit: () => void; // Callback to close dialog or re-fetch data
+  saveAction?: (formData: FormData) => Promise<{ success: boolean; errors?: z.ZodIssue[]; message?: string }>;
+  testAction?: (formData: FormData) => Promise<{ success: boolean; message: string }>;
 }
 
-export function SmtpSettingsForm({ initialData, onFormSubmit }: SmtpSettingsFormProps) {
+export function SmtpSettingsForm({ 
+  initialData, 
+  onFormSubmit,
+  saveAction = saveSmtpSettingsAction,
+  testAction = testSmtpSettingsAction
+}: SmtpSettingsFormProps) {
   const { toast } = useToast();
   const [showTestDialog, setShowTestDialog] = useState(false);
   const [testEmail, setTestEmail] = useState("");
@@ -156,7 +163,7 @@ export function SmtpSettingsForm({ initialData, onFormSubmit }: SmtpSettingsForm
       // Add test email
       formData.append('testEmail', testEmail);
       
-      const result = await testSmtpSettingsAction(formData);
+      const result = await testAction(formData);
       
       if (result.success) {
         toast({ title: "SMTP Test Successful", description: result.message });

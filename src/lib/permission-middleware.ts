@@ -191,6 +191,7 @@ export async function canManageUser(
   const roleHierarchy: Record<TenantUserRole, number> = {
     owner: 100,
     admin: 80,
+    billing_admin: 70,
     integration_manager: 60,
     endpoint_manager: 60,
     developer: 40,

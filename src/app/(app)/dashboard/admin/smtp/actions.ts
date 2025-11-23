@@ -1,4 +1,3 @@
-
 'use server';
 
 import { z } from 'zod';
@@ -6,32 +5,35 @@ import * as db from '@/lib/db';
 import type { SmtpSettings } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import nodemailer from 'nodemailer';
-import { cookies } from 'next/headers';
+import { isAdmin } from '@/lib/auth';
 
 /**
- * Get the current tenant ID from cookies
- * For SMTP config, we use tenant-scoped settings when available
+ * Get global SMTP settings (for system alerts and SaaS metrics)
+ * Only accessible by system administrators
  */
-async function getCurrentTenantId(): Promise<string | null> {
-  const cookieStore = await cookies();
-  return cookieStore.get('currentTenantId')?.value || null;
+export async function getGlobalSmtpSettingsAction(): Promise<SmtpSettings | null> {
+  const admin = await isAdmin();
+  if (!admin) {
+    throw new Error('Unauthorized: Only system administrators can access global SMTP settings');
+  }
+  
+  // Get global settings (tenantId = null)
+  return db.getSmtpSettings(null, false);
 }
 
 /**
- * Get SMTP settings for the current tenant, or null if not configured
- * System admins accessing without a tenant context should use the global admin page
+ * Test global SMTP settings
+ * Only accessible by system administrators
  */
-export async function getSmtpSettingsAction(): Promise<SmtpSettings | null> {
-  const tenantId = await getCurrentTenantId();
-  // Get tenant-specific settings (no fallback to global from tenant page)
-  return db.getSmtpSettings(tenantId, false);
-}
-
-/**
- * Test SMTP settings before saving
- * Can be used from tenant-specific or global SMTP config pages
- */
-export async function testSmtpSettingsAction(formData: FormData): Promise<{ success: boolean; message: string }> {
+export async function testGlobalSmtpSettingsAction(formData: FormData): Promise<{ success: boolean; message: string }> {
+  const admin = await isAdmin();
+  if (!admin) {
+    return {
+      success: false,
+      message: 'Unauthorized: Only system administrators can test global SMTP settings'
+    };
+  }
+  
   const smtpSettingsSchema = z.object({
     host: z.string().min(1, "Host cannot be empty."),
     port: z.coerce.number().int().min(1, "Port must be a positive integer.").max(65535),
@@ -44,7 +46,6 @@ export async function testSmtpSettingsAction(formData: FormData): Promise<{ succ
 
   const data = Object.fromEntries(formData.entries());
   
-  // Convert port to number and secure to boolean
   const parsedData = {
     ...data,
     port: data.port ? parseInt(data.port as string, 10) : undefined,
@@ -62,9 +63,7 @@ export async function testSmtpSettingsAction(formData: FormData): Promise<{ succ
 
   try {
     const { testEmail, ...smtpConfig } = validatedFields.data;
-    const tenantId = await getCurrentTenantId();
     
-    // Create a transporter with the provided settings
     const transporter = nodemailer.createTransport({
       host: smtpConfig.host,
       port: smtpConfig.port,
@@ -75,39 +74,43 @@ export async function testSmtpSettingsAction(formData: FormData): Promise<{ succ
       },
     });
 
-    // Send a test email
     const mailOptions = {
       from: smtpConfig.fromEmail,
       to: testEmail,
-      subject: `NCRelay - SMTP Test${tenantId ? ' (Tenant Configuration)' : ' (Global Configuration)'}`,
-      text: 'This is a test email from NCRelay. If you received this, your SMTP settings are configured correctly.',
-      html: '<p>This is a test email from NCRelay.</p><p>If you received this, your SMTP settings are configured correctly.</p>',
+      subject: 'NCRelay - Global SMTP Test (System Configuration)',
+      text: 'This is a test email from NCRelay global SMTP configuration. If you received this, your system-wide SMTP settings are configured correctly and will be used for SaaS metrics, alerts, and password resets.',
+      html: '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;"><h2 style="color: #4F46E5;">Global SMTP Configuration Test</h2><p>Your system-wide SMTP settings have been configured successfully!</p><p>This configuration will be used for:</p><ul><li>System alerts and monitoring</li><li>SaaS metrics and reports</li><li>Password reset emails</li><li>Fallback when tenant SMTP is not configured</li></ul><p style="color: #666; font-size: 14px; margin-top: 30px;">This is a test from the NCRelay global administrator configuration.</p></div>',
     };
 
-    // Verify the connection first
     await transporter.verify();
-    
-    // Then send the test email
     await transporter.sendMail(mailOptions);
     
     return { 
       success: true, 
-      message: `SMTP connection successful! A test email has been sent to ${testEmail}.` 
+      message: `Global SMTP connection successful! A test email has been sent to ${testEmail}.` 
     };
   } catch (error) {
-    console.error("Failed to test SMTP settings:", error);
+    console.error("Failed to test global SMTP settings:", error);
     return { 
       success: false, 
-      message: `SMTP test failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      message: `Global SMTP test failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
     };
   }
 }
 
 /**
- * Save SMTP settings for the current tenant
- * Tenant admins save to their tenant, system admins should use global admin page
+ * Save global SMTP settings
+ * Only accessible by system administrators
  */
-export async function saveSmtpSettingsAction(formData: FormData): Promise<{ success: boolean; errors?: z.ZodIssue[]; message?: string }> {
+export async function saveGlobalSmtpSettingsAction(formData: FormData): Promise<{ success: boolean; errors?: z.ZodIssue[]; message?: string }> {
+  const admin = await isAdmin();
+  if (!admin) {
+    return {
+      success: false,
+      message: 'Unauthorized: Only system administrators can save global SMTP settings'
+    };
+  }
+  
   const smtpSettingsSchema = z.object({
     host: z.string().min(1, "Host cannot be empty."),
     port: z.coerce.number().int().min(1, "Port must be a positive integer.").max(65535),
@@ -120,7 +123,6 @@ export async function saveSmtpSettingsAction(formData: FormData): Promise<{ succ
 
   const data = Object.fromEntries(formData.entries());
   
-  // Convert port to number and secure to boolean
   const parsedData = {
     ...data,
     port: data.port ? parseInt(data.port as string, 10) : undefined,
@@ -137,26 +139,22 @@ export async function saveSmtpSettingsAction(formData: FormData): Promise<{ succ
   }
 
   try {
-    const tenantId = await getCurrentTenantId();
-    
     const settingsToSave: SmtpSettings = {
-      id: tenantId ? `smtp_${tenantId}` : 'default_settings',
+      id: 'default_settings', // Global settings always use this ID
       ...validatedFields.data,
       password: validatedFields.data.password || '',
-      tenantId: tenantId
+      tenantId: null // Explicitly null for global settings
     };
     
     await db.saveSmtpSettings(settingsToSave);
-    revalidatePath('/dashboard/settings/smtp');
+    revalidatePath('/dashboard/admin/smtp');
     
     return { 
       success: true, 
-      message: tenantId 
-        ? "Tenant SMTP settings saved successfully." 
-        : "Global SMTP settings saved successfully." 
+      message: "Global SMTP settings saved successfully. These will be used for system alerts, SaaS metrics, and as fallback." 
     };
   } catch (error) {
-    console.error("Failed to save SMTP settings:", error);
-    return { success: false, message: "Failed to save SMTP settings due to a server error." };
+    console.error("Failed to save global SMTP settings:", error);
+    return { success: false, message: "Failed to save global SMTP settings due to a server error." };
   }
 }

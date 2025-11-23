@@ -85,7 +85,7 @@ export interface LogEntry {
 }
 
 export interface SmtpSettings {
-  id: string; // Should be a fixed value like 'default_settings'
+  id: string; // Should be a fixed value like 'default_settings' for global, or tenant-specific ID
   host: string;
   port: number;
   user: string;
@@ -93,6 +93,7 @@ export interface SmtpSettings {
   secure: boolean;
   fromEmail: string;
   appBaseUrl: string; // For constructing links in emails
+  tenantId?: string | null; // NULL = global/system SMTP, non-NULL = tenant-specific SMTP
 }
 
 // New interface for the field filter approach
@@ -158,7 +159,7 @@ export interface QueuedNotification {
 
 // Multi-tenancy types
 export type TenantPlan = 'free' | 'pro' | 'enterprise';
-export type TenantUserRole = 'owner' | 'admin' | 'integration_manager' | 'endpoint_manager' | 'developer' | 'viewer';
+export type TenantUserRole = 'owner' | 'admin' | 'billing_admin' | 'integration_manager' | 'endpoint_manager' | 'developer' | 'viewer';
 
 export interface Tenant {
   id: string;

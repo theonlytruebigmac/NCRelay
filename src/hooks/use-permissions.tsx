@@ -102,6 +102,7 @@ export function usePermissions() {
   const roleDisplayName = {
     owner: 'Owner',
     admin: 'Admin',
+    billing_admin: 'Billing Admin',
     integration_manager: 'Integration Manager',
     endpoint_manager: 'Endpoint Manager',
     developer: 'Developer',

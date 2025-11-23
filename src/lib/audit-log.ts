@@ -47,7 +47,8 @@ export type AuditAction =
   | 'integration_created'
   | 'integration_updated'
   | 'integration_deleted'
-  | 'endpoint_accessed';
+  | 'endpoint_accessed'
+  | 'endpoint_access_denied';
 
 /**
  * Log a security event to the audit log

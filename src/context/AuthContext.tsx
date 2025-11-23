@@ -73,12 +73,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await logoutAction();
       setUser(null);
-      router.push('/login');
+      router.push('/');
     } catch (error) {
       console.error('Logout failed:', error);
       // Even if logout action fails, clear local state
       setUser(null);
-      router.push('/login');
+      router.push('/');
     }
   };
 

@@ -72,6 +72,20 @@ const DEFAULT_PERMISSIONS: Record<TenantUserRole, Permission[]> = {
     { resource: 'templates', action: 'update', allowed: true },
     { resource: 'templates', action: 'delete', allowed: true },
   ],
+  billing_admin: [
+    // Billing admins can manage billing and view resources but not modify technical configurations
+    { resource: 'tenant', action: 'read', allowed: true },
+    { resource: 'users', action: 'read', allowed: true },
+    { resource: 'endpoints', action: 'read', allowed: true },
+    { resource: 'integrations', action: 'read', allowed: true },
+    { resource: 'logs', action: 'read', allowed: true },
+    { resource: 'analytics', action: 'read', allowed: true },
+    { resource: 'billing', action: 'read', allowed: true },
+    { resource: 'billing', action: 'update', allowed: true },
+    { resource: 'settings', action: 'read', allowed: true },
+    { resource: 'field_filters', action: 'read', allowed: true },
+    { resource: 'templates', action: 'read', allowed: true },
+  ],
   integration_manager: [
     // Can manage integrations and related resources
     { resource: 'tenant', action: 'read', allowed: true },
@@ -406,6 +420,7 @@ export function getRoleLevel(role: TenantUserRole): number {
   const levels: Record<TenantUserRole, number> = {
     owner: 100,
     admin: 80,
+    billing_admin: 70,
     integration_manager: 60,
     endpoint_manager: 60,
     developer: 40,

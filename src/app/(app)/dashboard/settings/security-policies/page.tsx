@@ -22,6 +22,10 @@ interface SecuritySettings {
   passwordRequireLowercase: boolean;
   passwordRequireNumbers: boolean;
   passwordRequireSymbols: boolean;
+  passwordMinUppercase?: number;
+  passwordMinLowercase?: number;
+  passwordMinNumbers?: number;
+  passwordMinSymbols?: number;
   sessionTimeoutMinutes: number;
   maxFailedLoginAttempts: number;
   lockoutDurationMinutes: number;
@@ -307,36 +311,104 @@ export default function SecuritySettingsPage() {
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label>Require uppercase letters</Label>
-              <Switch
-                checked={settings.passwordRequireUppercase}
-                onCheckedChange={(checked) => updateSetting('passwordRequireUppercase', checked)}
-              />
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <Label>Require uppercase letters</Label>
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={settings.passwordRequireUppercase}
+                  onCheckedChange={(checked) => updateSetting('passwordRequireUppercase', checked)}
+                />
+                {settings.passwordRequireUppercase && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground">Min:</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={settings.passwordMinUppercase || 0}
+                      onChange={(e) => updateSetting('passwordMinUppercase', parseInt(e.target.value) || 0)}
+                      className="w-16 h-8"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <Label>Require lowercase letters</Label>
-              <Switch
-                checked={settings.passwordRequireLowercase}
-                onCheckedChange={(checked) => updateSetting('passwordRequireLowercase', checked)}
-              />
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <Label>Require lowercase letters</Label>
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={settings.passwordRequireLowercase}
+                  onCheckedChange={(checked) => updateSetting('passwordRequireLowercase', checked)}
+                />
+                {settings.passwordRequireLowercase && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground">Min:</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={settings.passwordMinLowercase || 0}
+                      onChange={(e) => updateSetting('passwordMinLowercase', parseInt(e.target.value) || 0)}
+                      className="w-16 h-8"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <Label>Require numbers</Label>
-              <Switch
-                checked={settings.passwordRequireNumbers}
-                onCheckedChange={(checked) => updateSetting('passwordRequireNumbers', checked)}
-              />
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <Label>Require numbers</Label>
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={settings.passwordRequireNumbers}
+                  onCheckedChange={(checked) => updateSetting('passwordRequireNumbers', checked)}
+                />
+                {settings.passwordRequireNumbers && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground">Min:</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={settings.passwordMinNumbers || 0}
+                      onChange={(e) => updateSetting('passwordMinNumbers', parseInt(e.target.value) || 0)}
+                      className="w-16 h-8"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <Label>Require symbols (!@#$%^&*)</Label>
-              <Switch
-                checked={settings.passwordRequireSymbols}
-                onCheckedChange={(checked) => updateSetting('passwordRequireSymbols', checked)}
-              />
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <Label>Require symbols (!@#$%^&*)</Label>
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={settings.passwordRequireSymbols}
+                  onCheckedChange={(checked) => updateSetting('passwordRequireSymbols', checked)}
+                />
+                {settings.passwordRequireSymbols && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground">Min:</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={settings.passwordMinSymbols || 0}
+                      onChange={(e) => updateSetting('passwordMinSymbols', parseInt(e.target.value) || 0)}
+                      className="w-16 h-8"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/permission-middleware';
 import {
   getQueueStats,
   getQueuedNotificationsByStatus,
@@ -11,11 +11,10 @@ import {
 } from '@/lib/notification-queue';
 
 export async function GET(request: NextRequest) {
-  // Verify admin session
-  const user = await getCurrentUser();
-  const admin = await isAdmin();
+  // Check permission to read logs (tenant admins and system admins)
+  const permission = await requirePermission('logs', 'read');
   
-  if (!user || !admin) {
+  if (!permission.allowed || !permission.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
@@ -54,11 +53,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  // Verify admin session
-  const user = await getCurrentUser();
-  const admin = await isAdmin();
+  // Check permission to manage logs (tenant admins and system admins)
+  const permission = await requirePermission('logs', 'read');
   
-  if (!user || !admin) {
+  if (!permission.allowed || !permission.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 

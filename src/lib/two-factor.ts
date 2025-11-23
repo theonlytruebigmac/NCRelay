@@ -43,14 +43,32 @@ export async function generateQRCode(otpauthUrl: string): Promise<string> {
 
 /**
  * Verify a TOTP token against a secret
+ * Uses a larger time window to account for clock drift between server and client
  */
-export function verifyTwoFactorToken(secret: string, token: string): boolean {
-  return speakeasy.totp.verify({
+export function verifyTwoFactorToken(secret: string, token: string, allowDebug: boolean = false): boolean {
+  const result = speakeasy.totp.verify({
     secret,
     encoding: 'base32',
     token,
-    window: 2, // Allow 2 steps before/after current time for clock drift
+    window: 6, // Allow ±3 minutes (6 x 30-second windows) for clock drift
   });
+  
+  // Log debug info if verification fails and debug is enabled
+  if (!result && allowDebug) {
+    const currentToken = speakeasy.totp({
+      secret,
+      encoding: 'base32',
+    });
+    const serverTime = new Date().toISOString();
+    console.warn('2FA verification failed', {
+      providedToken: token,
+      expectedToken: currentToken,
+      serverTime,
+      serverTimestamp: Date.now(),
+    });
+  }
+  
+  return result;
 }
 
 /**
@@ -148,8 +166,8 @@ export async function verifyUserTwoFactor(
     return { success: false };
   }
   
-  // Try TOTP first
-  if (verifyTwoFactorToken(config.secret, token)) {
+  // Try TOTP first with debug logging enabled
+  if (verifyTwoFactorToken(config.secret, token, true)) {
     // Update last used timestamp
     const db = await getDB();
     db.prepare(`
