@@ -36,6 +36,7 @@ export interface ApiEndpointConfig {
   associatedIntegrationIds: string[]; 
   createdAt: string;
   ipWhitelist?: string[]; // IP addresses allowed to access this specific endpoint
+  tenantId?: string; // The tenant this endpoint belongs to
 }
 
 export interface LoggedIntegrationAttempt {

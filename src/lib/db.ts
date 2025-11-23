@@ -376,11 +376,24 @@ export async function addIntegration(integration: Omit<Integration, 'id'>, userI
     userId,
     tenantId || null
   );
+
+  // Log audit event
+  const { logSecurityEvent } = await import('./audit-log');
+  await logSecurityEvent('integration_created', {
+    userId,
+    tenantId: tenantId || undefined,
+    details: {
+      integrationId: newIntegration.id,
+      integrationName: newIntegration.name,
+      platform: newIntegration.platform
+    }
+  });
+
   const fetchedIntegration = await getIntegrationById(newIntegration.id);
   return fetchedIntegration!;
 }
 
-export async function updateIntegration(id: string, integration: Partial<Omit<Integration, 'id'>>): Promise<Integration | null> {
+export async function updateIntegration(id: string, integration: Partial<Omit<Integration, 'id'>>, userId?: string, tenantId?: string): Promise<Integration | null> {
   const db = await getDB();
   const existing = await getIntegrationById(id);
   if (!existing) return null;
@@ -400,12 +413,44 @@ export async function updateIntegration(id: string, integration: Partial<Omit<In
     dataToSave.userId || null,
     id
   );
+
+  // Log audit event
+  if (userId) {
+    const { logSecurityEvent } = await import('./audit-log');
+    await logSecurityEvent('integration_updated', {
+      userId,
+      tenantId: tenantId || undefined,
+      details: {
+        integrationId: id,
+        integrationName: dataToSave.name,
+        changes: integration
+      }
+    });
+  }
+
   const updatedData = await getIntegrationById(id); 
   return updatedData;
 }
 
-export async function deleteIntegration(id: string): Promise<boolean> {
+export async function deleteIntegration(id: string, userId?: string, tenantId?: string): Promise<boolean> {
   const db = await getDB();
+  const existing = await getIntegrationById(id);
+  if (!existing) return false;
+
+  // Log audit event before deletion
+  if (userId) {
+    const { logSecurityEvent } = await import('./audit-log');
+    await logSecurityEvent('integration_deleted', {
+      userId,
+      tenantId: tenantId || undefined,
+      details: {
+        integrationId: id,
+        integrationName: existing.name,
+        platform: existing.platform
+      }
+    });
+  }
+
   const stmt = db.prepare('DELETE FROM integrations WHERE id = ?');
   const result = stmt.run(id);
   return result.changes > 0;
@@ -453,11 +498,12 @@ export async function getApiEndpointByPath(path: string): Promise<ApiEndpointCon
     path: row.path as string,
     createdAt: row.createdAt as string,
     associatedIntegrationIds: JSON.parse(row.associatedIntegrationIds as string || '[]'),
-    ipWhitelist: JSON.parse(row.ipWhitelist as string || '[]')
+    ipWhitelist: JSON.parse(row.ipWhitelist as string || '[]'),
+    tenantId: row.tenantId as string | undefined
   } : null;
 }
 
-export async function addApiEndpoint(endpoint: Omit<ApiEndpointConfig, 'id' | 'createdAt' | 'path'>, tenantId?: string): Promise<ApiEndpointConfig> {
+export async function addApiEndpoint(endpoint: Omit<ApiEndpointConfig, 'id' | 'createdAt' | 'path'>, tenantId?: string, userId?: string): Promise<ApiEndpointConfig> {
   const db = await getDB();
   const newEndpoint: ApiEndpointConfig = {
     id: uuidv4(),
@@ -479,6 +525,21 @@ export async function addApiEndpoint(endpoint: Omit<ApiEndpointConfig, 'id' | 'c
     newEndpoint.createdAt,
     tenantId || null
   );
+
+  // Log audit event
+  if (userId) {
+    const { logSecurityEvent } = await import('./audit-log');
+    await logSecurityEvent('api_endpoint_created', {
+      userId,
+      tenantId: tenantId || undefined,
+      details: {
+        endpointId: newEndpoint.id,
+        endpointName: newEndpoint.name,
+        endpointPath: newEndpoint.path
+      }
+    });
+  }
+
    return {
     ...newEndpoint,
     associatedIntegrationIds: newEndpoint.associatedIntegrationIds,
@@ -486,7 +547,7 @@ export async function addApiEndpoint(endpoint: Omit<ApiEndpointConfig, 'id' | 'c
   };
 }
 
-export async function updateApiEndpoint(id: string, endpoint: Partial<Omit<ApiEndpointConfig, 'id' | 'createdAt' | 'path'>>): Promise<ApiEndpointConfig | null> {
+export async function updateApiEndpoint(id: string, endpoint: Partial<Omit<ApiEndpointConfig, 'id' | 'createdAt' | 'path'>>, userId?: string, tenantId?: string): Promise<ApiEndpointConfig | null> {
   const db = await getDB();
   const existing = await getApiEndpointById(id); 
   if (!existing) return null;
@@ -502,11 +563,42 @@ export async function updateApiEndpoint(id: string, endpoint: Partial<Omit<ApiEn
     JSON.stringify(updatedEndpointData.ipWhitelist || []), // Store as JSON string
     id
   );
+
+  // Log audit event
+  if (userId) {
+    const { logSecurityEvent } = await import('./audit-log');
+    await logSecurityEvent('api_endpoint_updated', {
+      userId,
+      tenantId: tenantId || undefined,
+      details: {
+        endpointId: id,
+        endpointName: updatedEndpointData.name,
+        changes: endpoint
+      }
+    });
+  }
+
   return getApiEndpointById(id); 
 }
 
-export async function deleteApiEndpoint(id: string): Promise<boolean> {
+export async function deleteApiEndpoint(id: string, userId?: string, tenantId?: string): Promise<boolean> {
   const db = await getDB();
+  const existing = await getApiEndpointById(id);
+  if (!existing) return false;
+
+  // Log audit event before deletion
+  if (userId) {
+    const { logSecurityEvent } = await import('./audit-log');
+    await logSecurityEvent('api_endpoint_deleted', {
+      userId,
+      tenantId: tenantId || undefined,
+      details: {
+        endpointId: id,
+        endpointName: existing.name,
+        endpointPath: existing.path
+      }
+    });
+  }
   const stmt = db.prepare('DELETE FROM api_endpoints WHERE id = ?');
   const result = stmt.run(id);
   return result.changes > 0;
@@ -1288,10 +1380,10 @@ export async function removeUserFromTenant(tenantId: string, userId: string): Pr
   return result.changes > 0;
 }
 
-export async function getUsersInTenant(tenantId: string): Promise<Array<User & { role: TenantUserRole }>> {
+export async function getUsersInTenant(tenantId: string): Promise<Array<User & { role: TenantUserRole; createdAt: string }>> {
   const db = await getDB();
   const stmt = db.prepare(`
-    SELECT u.id, u.email, u.name, u.isAdmin, tu.role
+    SELECT u.id, u.email, u.name, u.isAdmin, tu.role, tu.createdAt
     FROM users u
     INNER JOIN tenant_users tu ON u.id = tu.userId
     WHERE tu.tenantId = ?
@@ -1305,6 +1397,7 @@ export async function getUsersInTenant(tenantId: string): Promise<Array<User & {
     name: row.name as string,
     isAdmin: !!row.isAdmin,
     role: row.role as TenantUserRole,
+    createdAt: row.createdAt as string,
   }));
 }
 

@@ -14,14 +14,14 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageShell } from '@/components/layout/PageShell';
-import { Building2, Plus, Settings, Users } from 'lucide-react';
+import { Building2, Plus, Activity, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { TenantWithRole } from '@/lib/types';
 import { RoleBadge } from '@/components/tenant/RoleSelector';
 
 export default function TenantsPage() {
   const { user } = useAuth();
-  const { tenants, loading, refreshTenants } = useTenant();
+  const { tenants, loading, refreshTenants, setCurrentTenant } = useTenant();
   const router = useRouter();
   const [allTenants, setAllTenants] = useState<TenantWithRole[]>([]);
 
@@ -115,14 +115,20 @@ export default function TenantsPage() {
               )}
               <div className="flex gap-2">
                 <Button
-                  onClick={() => router.push(`/tenants/${tenant.id}`)}
+                  onClick={() => {
+                    setCurrentTenant(tenant);
+                    router.push('/dashboard/monitor');
+                  }}
                   className="flex-1 gap-2"
                 >
-                  <Settings className="h-4 w-4" />
-                  Settings
+                  <Activity className="h-4 w-4" />
+                  Monitor
                 </Button>
                 <Button
-                  onClick={() => router.push(`/tenants/${tenant.id}/users`)}
+                  onClick={() => {
+                    setCurrentTenant(tenant);
+                    router.push('/dashboard/users');
+                  }}
                   className="flex-1 gap-2"
                 >
                   <Users className="h-4 w-4" />

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import * as db from '@/lib/db';
 import type { ApiEndpointConfig } from '@/lib/types';
 import { cookies } from 'next/headers';
+import { getCurrentUser } from '@/lib/auth';
 
 const apiEndpointSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters.").max(50, "Name must be at most 50 characters."),
@@ -54,8 +55,12 @@ export async function addApiEndpointAction(formData: FormData) {
   }
 
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { error: "Authentication required." };
+    }
     const { tenantId: _tenantId, ...endpointData } = validatedFields.data;
-    await db.addApiEndpoint(endpointData, tenantId || undefined);
+    await db.addApiEndpoint(endpointData, tenantId || undefined, user.id);
     revalidatePath('/dashboard/settings/api');
     return { success: true };
   } catch (error) {
@@ -80,7 +85,12 @@ export async function updateApiEndpointAction(id: string, formData: FormData) {
   }
 
   try {
-    const result = await db.updateApiEndpoint(id, validatedFields.data);
+    const user = await getCurrentUser();
+    const tenantId = await getCurrentTenantId();
+    if (!user) {
+      return { error: "Authentication required." };
+    }
+    const result = await db.updateApiEndpoint(id, validatedFields.data, user.id, tenantId || undefined);
      if (!result) {
         return { error: "API Endpoint not found." };
     }
@@ -94,7 +104,12 @@ export async function updateApiEndpointAction(id: string, formData: FormData) {
 
 export async function deleteApiEndpointAction(id: string) {
   try {
-    const success = await db.deleteApiEndpoint(id);
+    const user = await getCurrentUser();
+    const tenantId = await getCurrentTenantId();
+    if (!user) {
+      return { error: "Authentication required." };
+    }
+    const success = await db.deleteApiEndpoint(id, user.id, tenantId || undefined);
     if(!success) {
         return { error: "API Endpoint not found or already deleted."};
     }

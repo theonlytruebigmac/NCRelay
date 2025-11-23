@@ -1347,18 +1347,39 @@ export default function UsersPage() {
                             <KeyRound className="h-4 w-4" />
                           </Button>
                           {!user.isAdmin && user.role !== 'owner' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setUserToRemove(user);
-                              }}
-                              aria-label="Remove user"
-                              title="Remove from tenant"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditUser({
+                                    id: user.userId,
+                                    email: user.email,
+                                    name: user.name,
+                                    isAdmin: user.isAdmin || false,
+                                    tenantCount: 0,
+                                    createdAt: user.createdAt
+                                  });
+                                }}
+                                aria-label="Edit user"
+                                title="Edit user"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setUserToRemove(user);
+                                }}
+                                aria-label="Remove user"
+                                title="Remove from tenant"
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </>
                           )}
                         </div>
                       </TableCell>

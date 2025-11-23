@@ -74,7 +74,6 @@ export async function DELETE(
       const { ipAddress, userAgent } = getRequestContext(request);
       await logSecurityEvent('2fa_reset', {
         userId: user.id,
-        tenantId: user.tenantId,
         details: { 
           resetBy: permission.user?.id,
           email: user.email 
@@ -156,7 +155,6 @@ export async function POST(
       const { ipAddress, userAgent } = getRequestContext(request);
       await logSecurityEvent(enforce ? '2fa_enforced' : '2fa_unenforced', {
         userId: user.id,
-        tenantId: user.tenantId,
         details: { 
           enforcedBy: permission.user?.id,
           email: user.email 

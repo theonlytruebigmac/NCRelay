@@ -139,6 +139,21 @@ export async function DELETE(
       );
     }
 
+    // Log audit event
+    const { logSecurityEvent } = await import('@/lib/audit-log');
+    await logSecurityEvent('tenant_user_removed', {
+      userId: user.id,
+      tenantId: id,
+      details: {
+        removedUserId: userId,
+        removedUserRole: targetRole
+      },
+      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
+                 request.headers.get('x-real-ip') || 
+                 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown'
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error removing user from tenant:', error);

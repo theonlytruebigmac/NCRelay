@@ -119,11 +119,11 @@ export async function updateIntegrationAction(id: string, formData: FormData) {
   }
   
   try {
-    await ensurePermission('integrations', 'update', {
+    const { user, tenantId } = await ensurePermission('integrations', 'update', {
       logAction: true,
       resourceId: id
     });
-    const result = await db.updateIntegration(id, validatedFields.data);
+    const result = await db.updateIntegration(id, validatedFields.data, user.id, tenantId || undefined);
     if (!result) {
         return { error: "Integration not found." };
     }
@@ -139,12 +139,12 @@ export async function updateIntegrationAction(id: string, formData: FormData) {
 export async function deleteIntegrationAction(id: string) {
   try {
     // Check permission to delete integrations
-    await ensurePermission('integrations', 'delete', {
+    const { user, tenantId } = await ensurePermission('integrations', 'delete', {
       logAction: true,
       resourceId: id
     });
 
-    const success = await db.deleteIntegration(id);
+    const success = await db.deleteIntegration(id, user.id, tenantId || undefined);
     if (!success) {
       return { error: "Integration not found or already deleted." };
     }
@@ -164,11 +164,12 @@ export async function toggleIntegrationEnabledAction(id: string, enabled: boolea
   }
 
   try {
+    const tenantId = getCurrentTenantId();
     const integration = await db.getIntegrationById(id);
     if (!integration) {
       return { error: "Integration not found." };
     }
-    await db.updateIntegration(id, { ...integration, enabled });
+    await db.updateIntegration(id, { ...integration, enabled }, user.id, tenantId || undefined);
     revalidatePath('/dashboard/integrations');
     return { success: true, enabled };
   } catch (error) {

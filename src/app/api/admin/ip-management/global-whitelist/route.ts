@@ -79,11 +79,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE /api/admin/ip-management/global-whitelist/[ipAddress]
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ ipAddress: string }> }
-) {
+// DELETE /api/admin/ip-management/global-whitelist
+export async function DELETE(request: NextRequest) {
   try {
     const permission = await requirePermission('settings', 'manage', {
       logAction: true,
@@ -93,8 +90,17 @@ export async function DELETE(
       return NextResponse.json({ error: permission.reason || 'Access denied' }, { status: 403 });
     }
 
-    const { ipAddress } = await params;
-    await removeFromGlobalWhitelist(decodeURIComponent(ipAddress));
+    const body = await request.json();
+    const { ipAddress } = body;
+
+    if (!ipAddress) {
+      return NextResponse.json(
+        { error: 'IP address is required' },
+        { status: 400 }
+      );
+    }
+
+    await removeFromGlobalWhitelist(ipAddress);
 
     return NextResponse.json({ success: true });
   } catch (error) {

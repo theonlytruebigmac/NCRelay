@@ -217,7 +217,7 @@ export async function checkAndLockAccount(
         await autoBlacklistIP(
           ip,
           `Automated blacklist: ${count} failed login attempts for ${email}`,
-          user.tenantId || undefined,
+          undefined, // User type doesn't have tenantId
           lockoutMinutes
         );
       }

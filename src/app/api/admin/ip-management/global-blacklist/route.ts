@@ -91,11 +91,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE /api/admin/ip-management/global-blacklist/[ipAddress]
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ ipAddress: string }> }
-) {
+// DELETE /api/admin/ip-management/global-blacklist
+export async function DELETE(request: NextRequest) {
   try {
     const permission = await requirePermission("settings", "manage", {
       logAction: true,
@@ -108,8 +105,17 @@ export async function DELETE(
       );
     }
 
-    const { ipAddress } = await params;
-    await removeFromGlobalBlacklist(decodeURIComponent(ipAddress));
+    const body = await request.json();
+    const { ipAddress } = body;
+
+    if (!ipAddress) {
+      return NextResponse.json(
+        { error: "IP address is required" },
+        { status: 400 }
+      );
+    }
+
+    await removeFromGlobalBlacklist(ipAddress);
 
     return NextResponse.json({ success: true });
   } catch (error) {

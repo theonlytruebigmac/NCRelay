@@ -40,7 +40,16 @@ export async function GET(
     }
 
     const users = await getUsersInTenant(id);
-    return NextResponse.json({ users });
+    // Map to match the expected format in the UI
+    const formattedUsers = users.map(user => ({
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      isAdmin: user.isAdmin,
+      createdAt: user.createdAt
+    }));
+    return NextResponse.json({ users: formattedUsers });
   } catch (error) {
     console.error('Error fetching tenant users:', error);
     return NextResponse.json(
@@ -137,12 +146,37 @@ export async function POST(
       }
     }
 
+    if (!targetUser) {
+      return NextResponse.json(
+        { error: 'User creation failed' },
+        { status: 500 }
+      );
+    }
+
     const tenantUser = await addUserToTenant(
       id,
       targetUser.id,
       builtInRole,
       customRoleId
     );
+
+    // Log audit event
+    const { logSecurityEvent } = await import('@/lib/audit-log');
+    await logSecurityEvent('tenant_user_added', {
+      userId: permission.user.id,
+      tenantId: id,
+      details: {
+        addedUserId: targetUser.id,
+        addedUserEmail: targetUser.email,
+        role: builtInRole || 'custom',
+        customRoleId,
+        isNewUser
+      },
+      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
+                 request.headers.get('x-real-ip') || 
+                 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown'
+    });
 
     // Send welcome email
     const { getDB } = await import('@/lib/db');

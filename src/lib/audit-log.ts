@@ -38,7 +38,16 @@ export type AuditAction =
   | 'session_revoked'
   | 'account_locked'
   | 'account_unlocked'
-  | 'security_settings_updated';
+  | 'security_settings_updated'
+  | 'tenant_user_added'
+  | 'tenant_user_removed'
+  | 'api_endpoint_created'
+  | 'api_endpoint_updated'
+  | 'api_endpoint_deleted'
+  | 'integration_created'
+  | 'integration_updated'
+  | 'integration_deleted'
+  | 'endpoint_accessed';
 
 /**
  * Log a security event to the audit log

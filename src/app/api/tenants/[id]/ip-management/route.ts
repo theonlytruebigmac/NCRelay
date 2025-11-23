@@ -125,13 +125,13 @@ export async function POST(
   }
 }
 
-// DELETE /api/tenants/[id]/ip-management/[ipAddress]
+// DELETE /api/tenants/[id]/ip-management
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; ipAddress: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: tenantId, ipAddress } = await params;
+    const { id: tenantId } = await params;
     
     const permission = await requirePermission('settings', 'manage', {
       tenantId,
@@ -142,15 +142,17 @@ export async function DELETE(
       return NextResponse.json({ error: permission.reason || 'Access denied' }, { status: 403 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type'); // 'whitelist' or 'blacklist'
+    const body = await request.json();
+    const { type, ipAddress } = body; // 'whitelist' or 'blacklist'
 
-    const decodedIP = decodeURIComponent(ipAddress);
+    if (!ipAddress) {
+      return NextResponse.json({ error: 'IP address is required' }, { status: 400 });
+    }
 
     if (type === 'whitelist') {
-      await removeFromTenantWhitelist(tenantId, decodedIP);
+      await removeFromTenantWhitelist(tenantId, ipAddress);
     } else if (type === 'blacklist') {
-      await removeFromTenantBlacklist(tenantId, decodedIP);
+      await removeFromTenantBlacklist(tenantId, ipAddress);
     } else {
       return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
     }

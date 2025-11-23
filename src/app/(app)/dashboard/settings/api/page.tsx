@@ -49,6 +49,7 @@ import {
     deleteApiEndpointAction,
     getIntegrationsForEndpointSelectionAction
 } from "./actions";
+import { useTenant } from "@/context/TenantContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -70,6 +71,7 @@ export type EndpointFormValues = z.infer<typeof endpointFormSchema>;
 
 
 export default function ApiEndpointsPage() {
+  const { currentTenant } = useTenant();
   const [apiEndpoints, setApiEndpoints] = useState<ApiEndpointConfig[]>([]);
   const [integrationsForSelection, setIntegrationsForSelection] = useState<IntegrationForSelection[]>([]);
   
@@ -174,7 +176,7 @@ export default function ApiEndpointsPage() {
         } else if (result?.error) {
             toast({ variant: "destructive", title: "Error", description: result.error });
         } else {
-            toast({ title: editingEndpoint ? "Endpoint Updated" : "Endpoint Created", description: `Endpoint &quot;${values.name}&quot; has been ${editingEndpoint ? 'updated' : 'added'}.` });
+            toast({ title: editingEndpoint ? "Endpoint Updated" : "Endpoint Created", description: `Endpoint "${values.name}" has been ${editingEndpoint ? 'updated' : 'added'}.` });
             setShowEndpointDialog(false);
             setEditingEndpoint(null);
             fetchPageData(); // Re-fetch data
@@ -194,7 +196,7 @@ export default function ApiEndpointsPage() {
         if (result?.error) {
             toast({ variant: "destructive", title: "Error", description: result.error });
         } else {
-            toast({ title: "Endpoint Deleted", description: `Endpoint &quot;${endpointToDelete.name}&quot; has been removed.` });
+            toast({ title: "Endpoint Deleted", description: `Endpoint "${endpointToDelete.name}" has been removed.` });
             fetchPageData(); // Re-fetch data
         }
         setShowDeleteEndpointConfirmDialog(false);
@@ -260,7 +262,7 @@ export default function ApiEndpointsPage() {
                       <TableCell>
                         <div className="min-w-[300px]">
                           <WebhookUrlField
-                            value={`${origin}/api/custom/${endpoint.path}`}
+                            value={`${origin}/api/custom/${currentTenant?.slug || 'tenant'}/${endpoint.path}`}
                             disabled={true}
                             showCopyButton={true}
                             className="font-mono text-xs h-8"
@@ -328,8 +330,8 @@ export default function ApiEndpointsPage() {
                   <div className="text-right pt-2 text-sm font-medium">Endpoint URL</div>
                   <div className="col-span-3">
                     <div className="flex items-center">
-                      <span className="text-sm text-muted-foreground p-2 bg-muted rounded-l-md border border-input border-r-0 whitespace-nowrap overflow-hidden text-ellipsis flex-initial max-w-[50%]" title={`${origin}/api/custom/`}>
-                        {`${origin}/api/custom/`.length > 25 ? `...${`${origin}/api/custom/`.slice(-22)}` : `${origin}/api/custom/`}
+                      <span className="text-sm text-muted-foreground p-2 bg-muted rounded-l-md border border-input border-r-0 whitespace-nowrap overflow-hidden text-ellipsis flex-initial max-w-[50%]" title={`${origin}/api/custom/${currentTenant?.slug || 'tenant'}/`}>
+                        {`${origin}/api/custom/${currentTenant?.slug || 'tenant'}/`.length > 25 ? `...${`${origin}/api/custom/${currentTenant?.slug || 'tenant'}/`.slice(-22)}` : `${origin}/api/custom/${currentTenant?.slug || 'tenant'}/`}
                       </span>
                       <div className="p-2 bg-secondary/50 border border-input border-l-0 rounded-r-md flex-grow text-sm text-muted-foreground">
                         {editingEndpoint ? editingEndpoint.path : "🔒 Secure UUID will be generated"}
@@ -415,7 +417,7 @@ export default function ApiEndpointsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center"><AlertTriangle className="mr-2 h-6 w-6 text-destructive" />Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the endpoint &quot;{endpointToDelete?.name}&quot; (path: /api/custom/{endpointToDelete?.path}). This action cannot be undone.
+              This will permanently delete the endpoint &quot;{endpointToDelete?.name}&quot; (path: /api/custom/{currentTenant?.slug || 'tenant'}/{endpointToDelete?.path}). This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -440,7 +442,7 @@ export default function ApiEndpointsPage() {
           <p className="text-xs text-muted-foreground mb-2">Replace <code>your-endpoint-uuid</code> with the UUID from one of your configured endpoints above.</p>
           <pre className="bg-muted p-3 rounded-md text-xs font-mono overflow-x-auto whitespace-pre-wrap">
             {`curl -X POST \\
-  ${origin}/api/custom/your-endpoint-uuid \\
+  ${origin}/api/custom/${currentTenant?.slug || 'tenant'}/your-endpoint-uuid \\
   -H 'Content-Type: application/xml' \\
   -d '<notification><message>Test via custom endpoint!</message></notification>'`}
           </pre>

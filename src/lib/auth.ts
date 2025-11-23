@@ -65,7 +65,7 @@ export async function setAuthCookie(user: User, ipAddress?: string, userAgent?: 
   const { createSession } = await import('./session-manager');
   const sessionToken = await createSession(
     user.id,
-    user.tenantId || null,
+    null, // User type doesn't have tenantId
     ipAddress || null,
     userAgent || null,
     7 * 24 * 60 // 7 days in minutes

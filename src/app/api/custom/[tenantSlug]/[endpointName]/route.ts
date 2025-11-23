@@ -164,11 +164,11 @@ function createTeamsCard(data: ExtractedData, fieldFilter: FieldFilterConfig | n
 // Route handlers
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ endpointName: string }> }
+  context: { params: Promise<{ tenantSlug: string; endpointName: string }> }
 ) {
   // Await parameters to satisfy Next.js App Router requirements
   const params = await context.params;
-  const { endpointName } = params;
+  const { tenantSlug, endpointName } = params;
   const endpointPathName = endpointName;
   
   // Dynamic import to avoid database initialization during build
@@ -176,7 +176,8 @@ export async function POST(
     getApiEndpointByPath, 
     addRequestLog, 
     getIntegrations: getAllIntegrationsFromDb,
-    getFieldFilter
+    getFieldFilter,
+    getTenantBySlug
   } = await import('@/lib/db');
   
   const requestHeaders: Record<string, string> = {};
@@ -192,7 +193,7 @@ export async function POST(
     const errorLogEntry: Omit<LogEntry, 'id' | 'timestamp'> = {
         apiEndpointId: "unknown",
         apiEndpointName: "unknown",
-        apiEndpointPath: `/api/custom/${endpointPathName}`,
+        apiEndpointPath: `/api/custom/${tenantSlug}/${endpointPathName}`,
         incomingRequest: {
             ip: getClientIP(request),
             method: request.method,
@@ -219,7 +220,7 @@ export async function POST(
   const currentLogEntryPartial: Omit<LogEntry, 'id' | 'timestamp' | 'processingSummary' | 'integrations'> = {
     apiEndpointId: "unknown", 
     apiEndpointName: "Unknown Endpoint", 
-    apiEndpointPath: `/api/custom/${endpointPathName}`,
+    apiEndpointPath: `/api/custom/${tenantSlug}/${endpointPathName}`,
     incomingRequest: {
         ip: getClientIP(request),
         method: request.method,
@@ -229,15 +230,57 @@ export async function POST(
   };
 
   try {
-    const endpointConfig = await getApiEndpointByPath(endpointPathName);
-    if (!endpointConfig) {
-      console.warn(`API Endpoint not found: /api/custom/${endpointPathName}`);
+    // Validate tenant exists and get tenant ID
+    const tenant = await getTenantBySlug(tenantSlug);
+    if (!tenant) {
+      console.warn(`Tenant not found: ${tenantSlug}`);
       await addRequestLog({
         ...currentLogEntryPartial,
-        processingSummary: { overallStatus: 'total_failure', message: `API Endpoint '/api/custom/${endpointPathName}' not found.` },
+        processingSummary: { overallStatus: 'total_failure', message: `Tenant '${tenantSlug}' not found.` },
         integrations: []
       });
-      return NextResponse.json({ error: `API Endpoint '/api/custom/${endpointPathName}' not found.` }, { 
+      return NextResponse.json({ error: `Tenant '${tenantSlug}' not found.` }, { 
+        status: 404,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, SOAPAction',
+        }
+      });
+    }
+
+    const endpointConfig = await getApiEndpointByPath(endpointPathName);
+    if (!endpointConfig) {
+      console.warn(`API Endpoint not found: /api/custom/${tenantSlug}/${endpointPathName}`);
+      await addRequestLog({
+        ...currentLogEntryPartial,
+        processingSummary: { overallStatus: 'total_failure', message: `API Endpoint '/api/custom/${tenantSlug}/${endpointPathName}' not found.` },
+        integrations: []
+      });
+      return NextResponse.json({ error: `API Endpoint '/api/custom/${tenantSlug}/${endpointPathName}' not found.` }, { 
+        status: 404,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, SOAPAction',
+        }
+      });
+    }
+    
+    // Verify endpoint belongs to the tenant
+    if (endpointConfig.tenantId !== tenant.id) {
+      console.warn(`Endpoint ${endpointPathName} does not belong to tenant ${tenantSlug}`);
+      await addRequestLog({
+        ...currentLogEntryPartial,
+        apiEndpointId: endpointConfig.id,
+        apiEndpointName: endpointConfig.name,
+        processingSummary: { 
+          overallStatus: 'total_failure', 
+          message: `Endpoint does not belong to tenant '${tenantSlug}'.` 
+        },
+        integrations: []
+      });
+      return NextResponse.json({ error: 'Endpoint not found for this tenant.' }, { 
         status: 404,
         headers: {
           'Access-Control-Allow-Origin': '*',
@@ -273,6 +316,22 @@ export async function POST(
         }
       });
     }
+
+    // Log successful endpoint access to audit log
+    const { logSecurityEvent } = await import('@/lib/audit-log');
+    await logSecurityEvent('endpoint_accessed', {
+      tenantId: tenant.id,
+      details: {
+        endpointId: endpointConfig.id,
+        endpointName: endpointConfig.name,
+        endpointPath: endpointConfig.path,
+        method: request.method,
+        ipAddress: clientIP,
+        contentType: request.headers.get('content-type')
+      },
+      ipAddress: clientIP,
+      userAgent: request.headers.get('user-agent') || 'unknown'
+    });
 
     const contentType = request.headers.get('content-type');
     // Allow various XML/SOAP content types that N-Central might send
@@ -642,7 +701,11 @@ export async function POST(
         successfulRelays: relaySuccessCount,
         failedRelays: integrationsToProcess.length - relaySuccessCount,
       },
-      details: loggedIntegrationAttempts.map(att => ({name: att.integrationName, status: att.status, error: att.errorDetails})),
+      details: loggedIntegrationAttempts.map(att => ({
+        name: att.integrationName, 
+        status: att.status, 
+        ...(att.status === 'success' ? { message: att.errorDetails } : { error: att.errorDetails })
+      })),
     }, { 
       status: 200,
       headers: {
@@ -669,15 +732,15 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ endpointName: string }> }
+  context: { params: Promise<{ tenantSlug: string; endpointName: string }> }
 ) {
   // Await parameters to satisfy Next.js App Router requirements
   const params = await context.params;
-  const { endpointName } = params;
+  const { tenantSlug, endpointName } = params;
   const endpointPathName = endpointName;
   
   // Dynamic import to avoid database initialization during build
-  const { getApiEndpointByPath, addRequestLog } = await import('@/lib/db');
+  const { getApiEndpointByPath, addRequestLog, getTenantBySlug } = await import('@/lib/db');
   
   // Create a minimal log entry for security tracking
   const clientIP = getClientIP(request);
@@ -690,7 +753,7 @@ export async function GET(
   const currentLogEntryPartial: Omit<LogEntry, 'id' | 'timestamp' | 'processingSummary' | 'integrations'> = {
     apiEndpointId: "pending",
     apiEndpointName: "Unknown",
-    apiEndpointPath: `/api/custom/${endpointPathName}`,
+    apiEndpointPath: `/api/custom/${tenantSlug}/${endpointPathName}`,
     incomingRequest: {
       ip: clientIP,
       method: request.method,
@@ -699,12 +762,31 @@ export async function GET(
     },
   };
   
-  const endpointConfig = await getApiEndpointByPath(endpointPathName);
-
-  if (!endpointConfig) {
+  // Validate tenant exists
+  const tenant = await getTenantBySlug(tenantSlug);
+  if (!tenant) {
     await addRequestLog({
       ...currentLogEntryPartial,
-      processingSummary: { overallStatus: 'total_failure', message: `API Endpoint '/api/custom/${endpointPathName}' not found.` },
+      processingSummary: { overallStatus: 'total_failure', message: `Tenant '${tenantSlug}' not found.` },
+      integrations: []
+    });
+    
+    return NextResponse.json({ error: `Tenant not found.` }, { 
+      status: 404,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, SOAPAction',
+      }
+    });
+  }
+  
+  const endpointConfig = await getApiEndpointByPath(endpointPathName);
+
+  if (!endpointConfig || endpointConfig.tenantId !== tenant.id) {
+    await addRequestLog({
+      ...currentLogEntryPartial,
+      processingSummary: { overallStatus: 'total_failure', message: `API Endpoint not found for tenant '${tenantSlug}'.` },
       integrations: []
     });
     

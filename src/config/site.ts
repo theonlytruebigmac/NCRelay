@@ -164,6 +164,12 @@ export const siteConfig = {
           icon: Building2,
           systemAdminOnly: true,
           requiredPermission: { resource: 'tenant', action: 'read' },
+        },
+        {
+          title: "Admin API Docs",
+          href: "/dashboard/docs/admin",
+          icon: BookOpen,
+          systemAdminOnly: true,
         }
       ]
     }

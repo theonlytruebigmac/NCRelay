@@ -59,7 +59,6 @@ export async function DELETE(request: NextRequest) {
     const { ipAddress, userAgent } = getRequestContext(request);
     await logSecurityEvent('2fa_disabled', {
       userId: user.id,
-      tenantId: user.tenantId,
       details: { email: user.email },
       ipAddress,
       userAgent,

@@ -24,7 +24,7 @@ export async function GET() {
       GROUP BY status
     `).all() as Array<{ status: string; count: number; avgRetries: number }>;
 
-    // Recent Activity (last 100 items)
+    // Recent Activity (last 100 items, excluding GET requests that don't trigger integrations)
     const recentActivity = db.prepare(`
       SELECT
         r.id,
@@ -34,6 +34,7 @@ export async function GET() {
         r.apiEndpointName,
         r.processingOverallStatus as status
       FROM request_logs r
+      WHERE NOT (r.incomingRequestMethod = 'GET' AND r.processingOverallStatus = 'no_integrations_triggered')
       ORDER BY r.timestamp DESC
       LIMIT 100
     `).all() as Array<{
@@ -94,8 +95,15 @@ export async function GET() {
     };
 
     // Calculate success rate from recent activity (processingOverallStatus)
-    const successCount = recentActivity.filter(a => a.status === 'success').length;
-    const totalRequests = recentActivity.length;
+    // Only count POST requests that actually attempted to deliver notifications
+    const relevantRequests = recentActivity.filter(a => 
+      a.method === 'POST' && 
+      a.status !== 'no_integrations_triggered'
+    );
+    const successCount = relevantRequests.filter(a => 
+      a.status === 'success' || a.status === 'partial_failure'
+    ).length;
+    const totalRequests = relevantRequests.length;
     const successRate = totalRequests > 0 ? (successCount / totalRequests) * 100 : 0;
 
     // Average response time is not stored, so we'll calculate based on request count

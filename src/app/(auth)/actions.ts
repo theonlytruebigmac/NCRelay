@@ -84,7 +84,6 @@ export async function loginAction(formData: FormData): Promise<{ success?: boole
     // Log locked account login attempt
     await logSecurityEvent('login_locked', {
       userId: existingUser.id,
-      tenantId: existingUser.tenantId,
       details: { minutesRemaining },
       ipAddress,
       userAgent,
@@ -108,7 +107,6 @@ export async function loginAction(formData: FormData): Promise<{ success?: boole
     // Log failed login attempt
     await logSecurityEvent('login_failed', {
       userId: existingUser.id,
-      tenantId: existingUser.tenantId,
       details: { 
         reason: 'Invalid password',
         attemptsRemaining: lockResult.attemptsRemaining 
@@ -166,7 +164,6 @@ export async function loginAction(formData: FormData): Promise<{ success?: boole
   // Log successful login
   await logSecurityEvent('login_success', {
     userId: existingUser.id,
-    tenantId: existingUser.tenantId,
     details: { email: existingUser.email },
     ipAddress,
     userAgent,
@@ -187,7 +184,6 @@ export async function logoutAction(): Promise<void> {
     const { ipAddress, userAgent } = await getServerActionContext();
     await logSecurityEvent('logout', {
       userId: user.id,
-      tenantId: user.tenantId,
       details: { email: user.email },
       ipAddress,
       userAgent,
@@ -225,7 +221,6 @@ export async function sendPasswordResetLinkAction(formData: FormData): Promise<{
     const { ipAddress, userAgent } = await getServerActionContext();
     await logSecurityEvent('password_reset_requested', {
       userId: user.id,
-      tenantId: user.tenantId,
       details: { email: user.email },
       ipAddress,
       userAgent,
@@ -276,7 +271,6 @@ export async function resetPasswordAction(formData: FormData): Promise<{ success
       const { ipAddress, userAgent } = await getServerActionContext();
       await logSecurityEvent('password_reset_completed', {
         userId: user.id,
-        tenantId: user.tenantId,
         details: { email: user.email },
         ipAddress,
         userAgent,
@@ -376,7 +370,6 @@ export async function changePasswordAction(userId: string, formData: FormData): 
         const { ipAddress, userAgent } = await getServerActionContext();
         await logSecurityEvent('password_changed', {
             userId: userId,
-            tenantId: user.tenantId,
             details: { email: user.email },
             ipAddress,
             userAgent,
@@ -440,9 +433,8 @@ export async function verify2FAAction(formData: FormData): Promise<{ success?: b
     return { error: "User not found." };
   }
 
-  const { hashedPassword, ...userToReturn } = user;
   const { ipAddress, userAgent } = await getServerActionContext();
-  await setAuthCookie(userToReturn as User, ipAddress, userAgent);
+  await setAuthCookie(user, ipAddress, userAgent);
 
   return { success: true };
 }
