@@ -29,6 +29,7 @@ export interface User {
   provider?: 'local' | 'google'; // OAuth provider type
   providerId?: string; // OAuth provider's user ID
   providerAccountId?: string; // OAuth account ID for linking
+  onboardingCompleted?: boolean; // Whether user has completed onboarding
   // hashedPassword is not sent to client
 }
 

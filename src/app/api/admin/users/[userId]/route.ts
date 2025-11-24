@@ -222,14 +222,12 @@ export async function DELETE(
     // Get user details before deletion for audit log
     const userToDelete = db.prepare('SELECT email, name FROM users WHERE id = ?').get(userId) as any;
 
-    // Delete user (cascade will handle tenant_users, etc.)
-    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
-
-    // Log user deletion
+    // Log user deletion BEFORE deleting the user to avoid foreign key constraint
     const { ipAddress, userAgent } = getRequestContext(request);
     await logSecurityEvent('user_deleted', {
-      userId: userId,
+      userId: user.id, // The admin performing the deletion, not the user being deleted
       details: { 
+        deletedUserId: userId,
         email: userToDelete?.email,
         name: userToDelete?.name,
         deletedBy: user.id,
@@ -237,6 +235,9 @@ export async function DELETE(
       ipAddress,
       userAgent,
     });
+
+    // Delete user (cascade will handle tenant_users, etc.)
+    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

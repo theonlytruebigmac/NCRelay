@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoginDialog } from '@/components/auth/LoginDialog';
+import { SignupDialog } from '@/components/auth/SignupDialog';
 import { 
   ArrowRight, 
   Zap, 
@@ -28,6 +29,7 @@ export default function HomePage() {
   const router = useRouter();
   const [shouldRedirect, setShouldRedirect] = useState(false);
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+  const [signupDialogOpen, setSignupDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -45,6 +47,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       <LoginDialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen} />
+      <SignupDialog open={signupDialogOpen} onOpenChange={setSignupDialogOpen} />
       
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-background/80 backdrop-blur-md border-b border-border z-50">
@@ -56,9 +59,9 @@ export default function HomePage() {
             <span className="text-xl font-bold">NCRelay</span>
           </div>
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" onClick={() => setLoginDialogOpen(true)}>Login</Button>
-            <Button onClick={() => setLoginDialogOpen(true)}>
-              Sign Up <ArrowRight className="ml-2 h-4 w-4" />
+            <Button variant="ghost" onClick={() => setLoginDialogOpen(true)} data-login-trigger>Login</Button>
+            <Button onClick={() => setSignupDialogOpen(true)}>
+              Get Started <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -84,9 +87,9 @@ export default function HomePage() {
               <Button 
                 size="lg" 
                 className="text-lg h-12 px-8"
-                onClick={() => setLoginDialogOpen(true)}
+                onClick={() => setSignupDialogOpen(true)}
               >
-                Sign Up Free
+                Get Started Free
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button size="lg" variant="outline" className="text-lg h-12 px-8">
@@ -252,9 +255,9 @@ export default function HomePage() {
                 <Button 
                   className="w-full mb-6" 
                   variant={plan.popular ? "default" : "outline"}
-                  onClick={() => setLoginDialogOpen(true)}
+                  onClick={() => setSignupDialogOpen(true)}
                 >
-                  Sign Up
+                  Get Started
                 </Button>
                 <ul className="space-y-3">
                   {plan.features.map((feature, j) => (
@@ -282,9 +285,9 @@ export default function HomePage() {
           <Button 
             size="lg" 
             className="text-lg h-12 px-8"
-            onClick={() => setLoginDialogOpen(true)}
+            onClick={() => setSignupDialogOpen(true)}
           >
-            Sign Up Now
+            Get Started Now
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>

@@ -860,19 +860,19 @@ export default function UsersPage() {
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           {user.name}
-                          {user.isAdmin && (
+                          {!!user.isAdmin && (
                             <Badge variant="secondary" className="text-xs">
                               <Shield className="h-3 w-3 mr-1" />
                               System Admin
                             </Badge>
                           )}
-                          {user2FAStatus[user.id]?.isEnabled && (
+                          {!!user2FAStatus[user.id]?.isEnabled && (
                             <Badge variant="outline" className="text-xs">
                               <ShieldCheck className="h-3 w-3 mr-1 text-green-600" />
                               2FA
                             </Badge>
                           )}
-                          {user2FAStatus[user.id]?.enforcedByAdmin && !user2FAStatus[user.id]?.isEnabled && (
+                          {!!user2FAStatus[user.id]?.enforcedByAdmin && !user2FAStatus[user.id]?.isEnabled && (
                             <Badge variant="destructive" className="text-xs">
                               <ShieldAlert className="h-3 w-3 mr-1" />
                               2FA Required
@@ -1368,7 +1368,7 @@ export default function UsersPage() {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         {user.name || 'Unknown User'}
-                        {user.isAdmin && (
+                        {!!user.isAdmin && (
                           <Badge variant="secondary" className="text-xs">
                             <Shield className="h-3 w-3 mr-1" />
                             System Admin

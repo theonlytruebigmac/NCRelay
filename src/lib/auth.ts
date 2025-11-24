@@ -115,6 +115,22 @@ export async function getCurrentUser(): Promise<User | null> {
   'use server';
   
   try {
+    // Try NextAuth session first (for OAuth and new signups)
+    try {
+      const { auth } = await import('./auth-server');
+      const session = await auth();
+      
+      if (session?.user?.id) {
+        // Fetch fresh user data from database
+        const { getUserById } = await import('./db');
+        const user = await getUserById(session.user.id);
+        return user;
+      }
+    } catch (authError) {
+      console.error('Error checking NextAuth session:', authError);
+    }
+    
+    // Fallback to legacy token-based auth (for existing sessions)
     const cookieStore = await cookies();
     const token = cookieStore.get(TOKEN_COOKIE_NAME)?.value;
     
@@ -139,9 +155,9 @@ export async function getCurrentUser(): Promise<User | null> {
       }
     }
     
-  // Fetch fresh user data from database
-  const { getUserById } = await import('./db');
-  const user = await getUserById(payload.userId);
+    // Fetch fresh user data from database
+    const { getUserById } = await import('./db');
+    const user = await getUserById(payload.userId);
     return user;
   } catch (error) {
     console.error('Error getting current user:', error);

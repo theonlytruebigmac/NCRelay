@@ -222,12 +222,16 @@ export async function getUserByEmail(email: string): Promise<(User & { hashedPas
     name: row.name as string,
     hashedPassword: row.hashedPassword as string, 
     isAdmin: !!row.isAdmin,
+    provider: row.provider as 'local' | 'google' | undefined,
+    providerId: row.providerId as string | undefined,
+    providerAccountId: row.providerAccountId as string | undefined,
+    onboardingCompleted: !!row.onboardingCompleted,
   };
 }
 
 export async function getUserById(id: string): Promise<User | null> {
   const db = await getDB();
-  const stmt = db.prepare('SELECT id, email, name, isAdmin FROM users WHERE id = ?');
+  const stmt = db.prepare('SELECT id, email, name, isAdmin, provider, providerId, providerAccountId, onboardingCompleted FROM users WHERE id = ?');
   const row = stmt.get(id) as Record<string, unknown> | undefined;
   if (!row) return null;
   return {
@@ -235,6 +239,10 @@ export async function getUserById(id: string): Promise<User | null> {
     email: row.email as string,
     name: row.name as string,
     isAdmin: !!row.isAdmin,
+    provider: row.provider as 'local' | 'google' | undefined,
+    providerId: row.providerId as string | undefined,
+    providerAccountId: row.providerAccountId as string | undefined,
+    onboardingCompleted: !!row.onboardingCompleted,
   };
 }
 

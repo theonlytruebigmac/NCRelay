@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkIPAccess } from './lib/ip-access-control';
+import { auth } from '@/lib/auth-server';
 
 // Rate limiting data store (in-memory for simplicity)
 // In a production environment with multiple instances, you'd use Redis or similar
@@ -39,6 +40,44 @@ function getSecuritySettings(): SecuritySettings {
 }
 
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Handle onboarding redirects for authenticated users
+  // Skip for public routes, API routes, and static assets
+  const publicRoutes = ['/', '/login', '/forgot-password', '/reset-password'];
+  const isPublicRoute = publicRoutes.some(route => pathname === route);
+  const isApiRoute = pathname.startsWith('/api');
+  const isOnboardingRoute = pathname.startsWith('/onboarding');
+  
+  if (!isPublicRoute && !isApiRoute) {
+    try {
+      // Get session from NextAuth
+      const session = await auth();
+      
+      if (session?.user) {
+        // Check onboarding status directly from session
+        const onboardingCompleted = session.user.onboardingCompleted;
+        
+        console.log(`[Proxy] User: ${session.user.email}, Path: ${pathname}, OnboardingCompleted: ${onboardingCompleted}`);
+        
+        // If user hasn't completed onboarding and not already on onboarding page
+        if (!onboardingCompleted && !isOnboardingRoute) {
+          console.log('[Proxy] Redirecting to /onboarding - onboarding not completed');
+          return NextResponse.redirect(new URL('/onboarding', request.url));
+        }
+        
+        // If user has completed onboarding and trying to access onboarding page
+        if (onboardingCompleted && isOnboardingRoute) {
+          console.log('[Proxy] Redirecting to /dashboard - onboarding already completed');
+          return NextResponse.redirect(new URL('/dashboard', request.url));
+        }
+      }
+    } catch (error) {
+      console.error('Error checking onboarding status:', error);
+      // Continue on error to avoid blocking all requests
+    }
+  }
+
   // Handle filter routes
   if (request.nextUrl.pathname.startsWith('/dashboard/filters/')) {
     // Extract the path segment
@@ -161,11 +200,14 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Apply middleware to API routes and filter routes
   matcher: [
-    // API routes (except auth)
-    '/api/((?!auth).*)',
-    // Filter routes
-    '/dashboard/filters/:path*'
-  ]
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 };

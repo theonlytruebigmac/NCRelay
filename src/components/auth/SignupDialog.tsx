@@ -1,7 +1,9 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,92 +13,92 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { useCallback, useState } from "react";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Separator } from "@/components/ui/separator";
+import { registerAction } from "@/app/(auth)/signup/actions";
 
-const loginSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+const signupSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  confirmPassword: z.string()
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
-type LoginFormValues = z.infer<typeof loginSchema>;
+type SignupFormValues = z.infer<typeof signupSchema>;
 
-interface LoginDialogProps {
+interface SignupDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
-  const { login } = useAuth();
+export function SignupDialog({ open, onOpenChange }: SignupDialogProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+  const form = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
     defaultValues: {
+      name: "",
       email: "",
       password: "",
+      confirmPassword: "",
     },
   });
 
-  const onSubmit = useCallback(async (data: LoginFormValues) => {
+  const onSubmit = useCallback(async (data: SignupFormValues) => {
     setIsLoading(true);
-    setFormError(null);
+
     const formData = new FormData();
+    formData.append('name', data.name);
     formData.append('email', data.email);
     formData.append('password', data.password);
 
-    try {
-      const result = await login(formData);
-      if (result.success) {
+    const result = await registerAction(formData);
+
+    if (result.success) {
+      toast({
+        title: "Account Created!",
+        description: "Signing you in...",
+      });
+
+      // Automatically sign in the user
+      const signInResult = await signIn('credentials', {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      });
+
+      if (signInResult?.ok) {
         onOpenChange(false);
-        router.push("/dashboard");
-        toast({
-          title: "Login Successful",
-          description: "Welcome back!",
-        });
-      } else if (result.requires2FA) {
-        onOpenChange(false);
-        router.push("/verify-2fa");
+        // Redirect to onboarding
+        router.push('/onboarding');
       } else {
-        setFormError(result.error || "Invalid email or password. Please try again.");
+        // Sign in failed, redirect to login
         toast({
-          variant: "destructive",
-          title: "Login Failed",
-          description: result.error || "Invalid email or password. Please try again.",
+          title: "Account created",
+          description: "Please sign in with your new account.",
         });
-        form.resetField("password");
+        onOpenChange(false);
+        router.push('/login');
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
-      setFormError(errorMessage);
+    } else {
       toast({
         variant: "destructive",
-        title: "Login Failed",
-        description: errorMessage,
+        title: "Signup Failed",
+        description: result.error || "Failed to create account. Please try again.",
       });
-      form.resetField("password");
-    } finally {
       setIsLoading(false);
     }
-  }, [login, router, toast, form, onOpenChange]);
+  }, [router, toast, onOpenChange]);
 
   const handleOAuthSignIn = async (provider: 'google') => {
     setIsLoading(true);
@@ -105,8 +107,6 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
         callbackUrl: '/dashboard',
         redirect: true,
       });
-      // If redirect is true, this won't execute on success
-      // Only executes if there's an error
     } catch (error) {
       toast({
         variant: "destructive",
@@ -124,12 +124,12 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Welcome Back</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">Create Your Account</DialogTitle>
           <DialogDescription>
-            Sign in to your NCRelay account to continue
+            Get started with NCRelay in seconds
           </DialogDescription>
         </DialogHeader>
-        
+
         {/* OAuth Buttons */}
         {isOAuthEnabled && isGoogleEnabled && (
           <>
@@ -169,15 +169,29 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-background px-2 text-muted-foreground">
-                  Or continue with email
+                  Or sign up with email
                 </span>
               </div>
             </div>
           </>
         )}
 
+        {/* Email/Password Form */}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="John Doe" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="email"
@@ -204,31 +218,42 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
                 </FormItem>
               )}
             />
-            {formError && <p className="text-sm font-medium text-destructive">{formError}</p>}
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••••" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Sign In
+              Create Account
             </Button>
           </form>
         </Form>
-        <div className="mt-4 text-center space-y-2">
-          <Link 
-            href="/forgot-password" 
-            className="text-sm underline text-muted-foreground hover:text-primary block"
-            onClick={() => onOpenChange(false)}
+
+        <div className="mt-4 text-center text-sm text-muted-foreground">
+          Already have an account?{" "}
+          <button 
+            type="button"
+            className="underline hover:text-primary"
+            onClick={() => {
+              onOpenChange(false);
+              // Small delay to allow dialog to close before opening login
+              setTimeout(() => {
+                const loginButton = document.querySelector('[data-login-trigger]') as HTMLElement;
+                loginButton?.click();
+              }, 100);
+            }}
           >
-            Forgot password?
-          </Link>
-          <div className="text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link 
-              href="/signup" 
-              className="underline hover:text-primary"
-              onClick={() => onOpenChange(false)}
-            >
-              Sign up
-            </Link>
-          </div>
+            Sign in
+          </button>
         </div>
       </DialogContent>
     </Dialog>

@@ -38,6 +38,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email: session.user.email!,
           name: session.user.name || undefined,
           isAdmin: session.user.isAdmin,
+          onboardingCompleted: session.user.onboardingCompleted,
         });
         setIsLoading(false);
         return;
@@ -76,6 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email: session.user.email!,
         name: session.user.name || undefined,
         isAdmin: session.user.isAdmin,
+        onboardingCompleted: session.user.onboardingCompleted,
       });
       setIsLoading(false);
     } else {

@@ -10,11 +10,13 @@ declare module 'next-auth' {
   interface Session {
     user: User & {
       id: string;
+      onboardingCompleted?: boolean;
     };
   }
 
   interface User extends Omit<import('@/lib/types').User, 'provider' | 'providerId' | 'providerAccountId'> {
     id: string;
+    onboardingCompleted?: boolean;
   }
 }
 
@@ -54,6 +56,7 @@ export const authConfig: NextAuthConfig = {
           email: userWithoutPassword.email,
           name: userWithoutPassword.name,
           isAdmin: userWithoutPassword.isAdmin,
+          onboardingCompleted: userWithoutPassword.onboardingCompleted,
         };
       },
     }),
@@ -97,15 +100,15 @@ export const authConfig: NextAuthConfig = {
               stmt.run(account.providerAccountId, new Date().toISOString(), existingUser.id);
             }
           } else {
-            // Create new user from OAuth
+            // Create new user from OAuth - they will need to complete onboarding
             const now = new Date().toISOString();
             const userId = uuidv4();
             
             const stmt = db.prepare(`
               INSERT INTO users (
                 id, email, name, provider, providerId, providerAccountId, 
-                hashedPassword, isAdmin, createdAt, updatedAt
-              ) VALUES (?, ?, ?, ?, ?, ?, NULL, 0, ?, ?)
+                hashedPassword, isAdmin, onboardingCompleted, createdAt, updatedAt
+              ) VALUES (?, ?, ?, ?, ?, ?, NULL, 0, 0, ?, ?)
             `);
             
             stmt.run(
@@ -119,7 +122,7 @@ export const authConfig: NextAuthConfig = {
               now
             );
             
-            console.log(`Created new OAuth user: ${user.email} via ${account?.provider}`);
+            console.log(`Created new OAuth user: ${user.email} via ${account?.provider} - onboarding required`);
           }
 
           return true;
@@ -133,13 +136,38 @@ export const authConfig: NextAuthConfig = {
       return true;
     },
 
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger }) {
       // Initial sign in
       if (user) {
-        token.id = user.id;
-        token.email = user.email;
-        token.name = user.name;
-        token.isAdmin = user.isAdmin;
+        // For OAuth sign-ins, fetch the full user data from database
+        if (account?.provider !== 'credentials') {
+          const dbUser = await getUserByEmail(user.email!);
+          if (dbUser) {
+            token.id = dbUser.id;
+            token.email = dbUser.email;
+            token.name = dbUser.name;
+            token.isAdmin = dbUser.isAdmin;
+            token.onboardingCompleted = dbUser.onboardingCompleted;
+          }
+        } else {
+          // For credentials, user object already has all fields
+          token.id = user.id;
+          token.email = user.email;
+          token.name = user.name;
+          token.isAdmin = user.isAdmin;
+          token.onboardingCompleted = user.onboardingCompleted;
+        }
+      }
+
+      // On session update, fetch fresh user data
+      if (trigger === 'update' && token.id) {
+        const freshUser = await getUserById(token.id as string);
+        if (freshUser) {
+          token.name = freshUser.name;
+          token.email = freshUser.email;
+          token.isAdmin = freshUser.isAdmin;
+          token.onboardingCompleted = freshUser.onboardingCompleted;
+        }
       }
 
       return token;
@@ -151,6 +179,7 @@ export const authConfig: NextAuthConfig = {
         session.user.email = token.email as string;
         session.user.name = token.name as string;
         session.user.isAdmin = token.isAdmin as boolean;
+        session.user.onboardingCompleted = token.onboardingCompleted as boolean | undefined;
       }
 
       return session;
@@ -165,6 +194,7 @@ export const authConfig: NextAuthConfig = {
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 0, // Always update session on each request during onboarding flow
   },
 
   secret: process.env.NEXTAUTH_SECRET,

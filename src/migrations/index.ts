@@ -35,6 +35,8 @@ import * as migration028 from './028-add-tenant-smtp-settings';
 import * as migration035 from './035-add-password-count-requirements';
 import * as migration036 from './036-add-billing-admin-role';
 import migration037 from './037-add-oauth-fields';
+import migration038 from './038-make-hashedpassword-nullable';
+import migration039 from './039-add-onboarding-status';
 // Add new migration imports here...
 
 const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/app.db' : path.join(process.cwd(), 'app.db');
@@ -221,6 +223,18 @@ function getAllMigrations(): Migration[] {
       name: migration037.name || 'add-oauth-fields',
       up: migration037.up,
       down: migration037.down
+    },
+    {
+      id: 38,
+      name: migration038.name || 'make-hashedpassword-nullable',
+      up: migration038.up,
+      down: migration038.down
+    },
+    {
+      id: 39,
+      name: migration039.name || 'add-onboarding-status',
+      up: migration039.up,
+      down: migration039.down
     }
   ];
 
