@@ -1,12 +1,20 @@
 import { cleanupOldLogs, createBackup, getSecuritySettings } from './log-manager';
 import { processQueue, cleanupOldNotifications } from './notification-queue';
 import { sendScheduledDigests } from './notification-digest';
+import { cleanupExpiredSessions } from './session-manager';
+import { cleanupOldAuditLogs } from './audit-log';
+import { cleanupExpiredBlacklists } from './ip-access-control';
+import { cleanupOldFailedAttempts } from './account-lockout';
 
 let logCleanupInterval: NodeJS.Timeout | null = null;
 let backupInterval: NodeJS.Timeout | null = null;
 let queueProcessingInterval: NodeJS.Timeout | null = null;
 let queueCleanupInterval: NodeJS.Timeout | null = null;
 let digestInterval: NodeJS.Timeout | null = null;
+let sessionCleanupInterval: NodeJS.Timeout | null = null;
+let auditLogCleanupInterval: NodeJS.Timeout | null = null;
+let ipBlacklistCleanupInterval: NodeJS.Timeout | null = null;
+let failedLoginCleanupInterval: NodeJS.Timeout | null = null;
 
 /**
  * Initialize scheduled tasks
@@ -77,6 +85,50 @@ export function initScheduledTasks() {
       console.error('Scheduled digest email task failed:', error);
     }
   }, 60 * 60 * 1000); // 1 hour
+
+  // Schedule session cleanup task - run every hour
+  sessionCleanupInterval = setInterval(async () => {
+    console.log('Running scheduled session cleanup');
+    try {
+      const deletedCount = await cleanupExpiredSessions();
+      console.log(`Scheduled session cleanup completed: ${deletedCount} expired sessions removed`);
+    } catch (error) {
+      console.error('Scheduled session cleanup failed:', error);
+    }
+  }, 60 * 60 * 1000); // 1 hour
+
+  // Schedule audit log cleanup task - run daily
+  auditLogCleanupInterval = setInterval(async () => {
+    console.log('Running scheduled audit log cleanup');
+    try {
+      const deletedCount = await cleanupOldAuditLogs(90); // Keep 90 days by default
+      console.log(`Scheduled audit log cleanup completed: ${deletedCount} old audit logs removed`);
+    } catch (error) {
+      console.error('Scheduled audit log cleanup failed:', error);
+    }
+  }, 24 * 60 * 60 * 1000); // 24 hours
+
+  // Schedule IP blacklist cleanup task - run every hour
+  ipBlacklistCleanupInterval = setInterval(async () => {
+    console.log('Running scheduled IP blacklist cleanup');
+    try {
+      const result = await cleanupExpiredBlacklists();
+      console.log(`Scheduled IP blacklist cleanup completed: ${result.global} global, ${result.tenant} tenant entries removed`);
+    } catch (error) {
+      console.error('Scheduled IP blacklist cleanup failed:', error);
+    }
+  }, 60 * 60 * 1000); // 1 hour
+
+  // Schedule failed login attempts cleanup task - run daily
+  failedLoginCleanupInterval = setInterval(async () => {
+    console.log('Running scheduled failed login attempts cleanup');
+    try {
+      const deletedCount = await cleanupOldFailedAttempts();
+      console.log(`Scheduled failed login cleanup completed: ${deletedCount} old failed attempts removed`);
+    } catch (error) {
+      console.error('Scheduled failed login cleanup failed:', error);
+    }
+  }, 24 * 60 * 60 * 1000); // 24 hours
 }
 
 /**
@@ -106,5 +158,25 @@ export function stopScheduledTasks() {
   if (digestInterval) {
     clearInterval(digestInterval);
     digestInterval = null;
+  }
+
+  if (sessionCleanupInterval) {
+    clearInterval(sessionCleanupInterval);
+    sessionCleanupInterval = null;
+  }
+
+  if (auditLogCleanupInterval) {
+    clearInterval(auditLogCleanupInterval);
+    auditLogCleanupInterval = null;
+  }
+
+  if (ipBlacklistCleanupInterval) {
+    clearInterval(ipBlacklistCleanupInterval);
+    ipBlacklistCleanupInterval = null;
+  }
+
+  if (failedLoginCleanupInterval) {
+    clearInterval(failedLoginCleanupInterval);
+    failedLoginCleanupInterval = null;
   }
 }

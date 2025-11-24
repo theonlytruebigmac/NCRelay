@@ -5,13 +5,18 @@ ARG VCS_REF=unknown
 ARG NODE_ENV=production
 
 # ==== BUILD STAGE ====
-FROM node:20.19-alpine AS builder
+FROM node:22-slim AS builder
 
 # Set working directory
 WORKDIR /app
 
 # Install build dependencies for better-sqlite3 and other native modules
-RUN apk add --no-cache python3 make g++ sqlite sqlite-dev
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ sqlite3 libsqlite3-dev ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Update npm to latest version to fix glob vulnerability (CVE in npm's bundled glob)
+RUN npm install -g npm@latest
 
 # Copy package files and install dependencies
 COPY package*.json ./
@@ -35,7 +40,7 @@ RUN JWT_SECRET=build-time-dummy-secret-32chars-minimum NODE_ENV=production npm r
     node scripts/fix-lib-imports.js
 
 # ==== PRODUCTION STAGE ====
-FROM node:20.19-alpine AS production
+FROM node:22-slim AS production
 
 # Import build arguments from root
 ARG VERSION
@@ -58,7 +63,12 @@ LABEL org.opencontainers.image.version="${VERSION}" \
 WORKDIR /app
 
 # Install production dependencies
-RUN apk add --no-cache sqlite tini wget curl
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    sqlite3 tini wget curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Update npm to latest version to fix glob vulnerability (CVE in npm's bundled glob)
+RUN npm install -g npm@latest
 
 # Copy package files and install only production dependencies
 COPY package*.json ./
@@ -88,7 +98,7 @@ RUN mkdir -p /app/public /app/lib /app/migrations /data/backups /data/logs && \
 USER node
 
 # Use tini as init system
-ENTRYPOINT ["/sbin/tini", "--"]
+ENTRYPOINT ["/usr/bin/tini", "--"]
 
 # Expose the application ports
 EXPOSE 3000 9004

@@ -26,6 +26,9 @@ export interface User {
   email: string;
   name?: string;
   isAdmin?: boolean;
+  provider?: 'local' | 'google'; // OAuth provider type
+  providerId?: string; // OAuth provider's user ID
+  providerAccountId?: string; // OAuth account ID for linking
   // hashedPassword is not sent to client
 }
 
@@ -36,6 +39,7 @@ export interface ApiEndpointConfig {
   associatedIntegrationIds: string[]; 
   createdAt: string;
   ipWhitelist?: string[]; // IP addresses allowed to access this specific endpoint
+  tenantId?: string; // The tenant this endpoint belongs to
 }
 
 export interface LoggedIntegrationAttempt {
@@ -84,7 +88,7 @@ export interface LogEntry {
 }
 
 export interface SmtpSettings {
-  id: string; // Should be a fixed value like 'default_settings'
+  id: string; // Should be a fixed value like 'default_settings' for global, or tenant-specific ID
   host: string;
   port: number;
   user: string;
@@ -92,6 +96,7 @@ export interface SmtpSettings {
   secure: boolean;
   fromEmail: string;
   appBaseUrl: string; // For constructing links in emails
+  tenantId?: string | null; // NULL = global/system SMTP, non-NULL = tenant-specific SMTP
 }
 
 // New interface for the field filter approach
@@ -153,4 +158,89 @@ export interface QueuedNotification {
     apiEndpointName: string;
     apiEndpointPath: string;
     originalRequestId: string;
+}
+
+// Multi-tenancy types
+export type TenantPlan = 'free' | 'pro' | 'enterprise';
+export type TenantUserRole = 'owner' | 'admin' | 'billing_admin' | 'integration_manager' | 'endpoint_manager' | 'developer' | 'viewer';
+
+export interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  domain?: string;
+  plan: TenantPlan;
+  maxEndpoints: number;
+  maxIntegrations: number;
+  maxRequestsPerMonth: number;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt?: string;
+}
+
+export interface TenantUser {
+  id: string;
+  tenantId: string;
+  userId: string;
+  role: TenantUserRole;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TenantWithRole extends Tenant {
+  userRole: TenantUserRole;
+}
+
+// RBAC types
+export type Resource = 
+  | 'tenant'
+  | 'users'
+  | 'endpoints'
+  | 'integrations'
+  | 'logs'
+  | 'webhooks'
+  | 'analytics'
+  | 'billing'
+  | 'settings'
+  | 'field_filters'
+  | 'templates';
+
+export type Action = 'create' | 'read' | 'update' | 'delete' | 'test' | 'manage';
+
+export interface Permission {
+  resource: Resource;
+  action: Action;
+  allowed: boolean;
+}
+
+export interface RolePermission {
+  id: string;
+  tenantId: string;
+  role: TenantUserRole;
+  resource: Resource;
+  action: Action;
+  allowed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuditLog {
+  id: string;
+  tenantId: string;
+  userId: string;
+  action: string;
+  resource: Resource;
+  resourceId?: string;
+  changes?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  result: 'success' | 'failure' | 'denied';
+  reason?: string;
+  timestamp: string;
+}
+
+export interface PermissionCheck {
+  allowed: boolean;
+  reason?: string;
 }

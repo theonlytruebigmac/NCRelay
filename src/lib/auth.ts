@@ -45,9 +45,9 @@ export function verifyAuthToken(token: string): AuthTokenPayload | null {
 }
 
 /**
- * Set authentication cookie
+ * Set authentication cookie and create session record
  */
-export async function setAuthCookie(user: User): Promise<void> {
+export async function setAuthCookie(user: User, ipAddress?: string, userAgent?: string): Promise<void> {
   'use server';
   
   const token = generateAuthToken(user);
@@ -60,16 +60,52 @@ export async function setAuthCookie(user: User): Promise<void> {
     maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
     path: '/',
   });
+  
+  // Create session record for session management
+  const { createSession } = await import('./session-manager');
+  const sessionToken = await createSession(
+    user.id,
+    null, // User type doesn't have tenantId
+    ipAddress || null,
+    userAgent || null,
+    7 * 24 * 60 // 7 days in minutes
+  );
+  
+  // Store session token in a separate cookie for session tracking
+  cookieStore.set('session-token', sessionToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+    path: '/',
+  });
 }
 
 /**
- * Remove authentication cookie
+ * Remove authentication cookie and revoke session
  */
 export async function removeAuthCookie(): Promise<void> {
   'use server';
   
   const cookieStore = await cookies();
+  
+  // Get session token before deleting
+  const sessionToken = cookieStore.get('session-token')?.value;
+  
+  // Delete cookies
   cookieStore.delete(TOKEN_COOKIE_NAME);
+  cookieStore.delete('session-token');
+  
+  // Revoke session in database if it exists
+  if (sessionToken) {
+    try {
+      const { revokeSessionByToken } = await import('./session-manager');
+      await revokeSessionByToken(sessionToken);
+    } catch (error) {
+      console.error('Error revoking session:', error);
+      // Don't throw - cookie is already deleted
+    }
+  }
 }
 
 /**
@@ -89,6 +125,18 @@ export async function getCurrentUser(): Promise<User | null> {
     const payload = verifyAuthToken(token);
     if (!payload) {
       return null;
+    }
+    
+    // Update session activity timestamp
+    const sessionToken = cookieStore.get('session-token')?.value;
+    if (sessionToken) {
+      try {
+        const { updateSessionActivity } = await import('./session-manager');
+        await updateSessionActivity(sessionToken);
+      } catch (error) {
+        // Don't fail auth if session update fails
+        console.error('Error updating session activity:', error);
+      }
     }
     
   // Fetch fresh user data from database

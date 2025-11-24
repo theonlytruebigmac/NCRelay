@@ -12,9 +12,9 @@ import { WebhookUrlField } from "@/components/ui/webhook-url-field";
 
 interface IntegrationCardProps {
   integration: Integration;
-  onToggleEnabled: (id: string, enabled: boolean) => void;
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  onToggleEnabled?: (id: string, enabled: boolean) => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
   isToggling?: boolean; // To show loading state on switch
 }
 
@@ -51,27 +51,39 @@ export function IntegrationCard({ integration, onToggleEnabled, onEdit, onDelete
         </div>
       </CardContent>
       <CardFooter className="flex items-center justify-between border-t pt-4">
-        <div className="flex items-center space-x-2">
-          <Switch
-            checked={integration.enabled}
-            onCheckedChange={(checked) => onToggleEnabled(integration.id, checked)}
-            aria-label={integration.enabled ? "Disable integration" : "Enable integration"}
-            disabled={isToggling}
-          />
-           {isToggling && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-          {!isToggling && (
-             <span className="text-sm text-muted-foreground">
-               {integration.enabled ? "Enabled" : "Disabled"}
-             </span>
-          )}
-        </div>
+        {onToggleEnabled ? (
+          <div className="flex items-center space-x-2">
+            <Switch
+              checked={integration.enabled}
+              onCheckedChange={(checked) => onToggleEnabled(integration.id, checked)}
+              aria-label={integration.enabled ? "Disable integration" : "Enable integration"}
+              disabled={isToggling}
+            />
+             {isToggling && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            {!isToggling && (
+               <span className="text-sm text-muted-foreground">
+                 {integration.enabled ? "Enabled" : "Disabled"}
+               </span>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center space-x-2">
+            <Badge variant={integration.enabled ? "default" : "outline"}>
+              {integration.enabled ? "Enabled" : "Disabled"}
+            </Badge>
+          </div>
+        )}
         <div className="flex space-x-2">
-          <Button variant="outline" size="icon" onClick={() => onEdit(integration.id)} aria-label="Edit integration">
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button variant="destructive" size="icon" onClick={() => onDelete(integration.id)} aria-label="Delete integration">
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {onEdit && (
+            <Button variant="outline" size="icon" onClick={() => onEdit(integration.id)} aria-label="Edit integration">
+              <Edit className="h-4 w-4" />
+            </Button>
+          )}
+          {onDelete && (
+            <Button variant="destructive" size="icon" onClick={() => onDelete(integration.id)} aria-label="Delete integration">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </CardFooter>
     </Card>

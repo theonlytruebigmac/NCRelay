@@ -6,11 +6,12 @@ import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { loginAction, logoutAction, updateUserNameAction as updateUserNameDbAction, updateUserEmailAction as updateUserEmailDbAction } from '@/app/(auth)/actions';
+import { useSession, signOut as nextAuthSignOut } from 'next-auth/react';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (formData: FormData) => Promise<{ success?: boolean; error?: string }>;
+  login: (formData: FormData) => Promise<{ success?: boolean; error?: string; requires2FA?: boolean }>;
   logout: () => Promise<void>;
   updateUserName: (formData: FormData) => Promise<{ success: boolean, error?: string }>;
   updateUserEmail: (formData: FormData) => Promise<{ success: boolean, error?: string }>;
@@ -23,13 +24,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  
+  // Use NextAuth session
+  const { data: session, status: sessionStatus, update: updateSession } = useSession();
 
-  // Fetch current user from server
+  // Fetch current user from server (fallback to legacy auth)
   const refreshUser = async () => {
     try {
+      // First check NextAuth session
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email!,
+          name: session.user.name || undefined,
+          isAdmin: session.user.isAdmin,
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Fallback to legacy auth API
       const response = await fetch('/api/auth/me', {
         method: 'GET',
-        credentials: 'include', // Include cookies
+        credentials: 'include',
       });
       
       if (response.ok) {
@@ -46,9 +63,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Update user when NextAuth session changes
   useEffect(() => {
-    refreshUser();
-  }, []);
+    if (sessionStatus === 'loading') {
+      setIsLoading(true);
+      return;
+    }
+
+    if (session?.user) {
+      setUser({
+        id: session.user.id,
+        email: session.user.email!,
+        name: session.user.name || undefined,
+        isAdmin: session.user.isAdmin,
+      });
+      setIsLoading(false);
+    } else {
+      // Try legacy auth
+      refreshUser();
+    }
+  }, [session, sessionStatus]);
 
   const login = async (formData: FormData) => {
     try {
@@ -57,6 +91,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Refresh user data to get the authenticated user
         await refreshUser();
         return { success: true };
+      }
+      if (result.requires2FA) {
+        // Return 2FA required flag to let component handle redirect
+        return { requires2FA: true };
       }
       return result;
     } catch (error) {
@@ -67,13 +105,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
+      // Sign out from NextAuth if there's a session
+      if (session) {
+        await nextAuthSignOut({ redirect: false });
+      }
+      
+      // Also call legacy logout action
       await logoutAction();
+      
       setUser(null);
+      router.push('/');
     } catch (error) {
       console.error('Logout failed:', error);
       // Even if logout action fails, clear local state
       setUser(null);
-      router.push('/login');
+      router.push('/');
     }
   };
 
@@ -85,6 +131,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (result.success && result.user) {
       setUser(result.user);
+      // Update NextAuth session if applicable
+      if (session) {
+        await updateSession();
+      }
       return { success: true };
     }
     return { success: false, error: result.error || "Failed to update name." };
@@ -98,6 +148,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (result.success && result.user) {
       setUser(result.user);
+      // Update NextAuth session if applicable
+      if (session) {
+        await updateSession();
+      }
       return { success: true };
     }
     return { success: false, error: result.error || "Failed to update email." };

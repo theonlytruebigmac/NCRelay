@@ -67,6 +67,17 @@ export function getClientIP(request: NextRequest): string {
 }
 
 /**
+ * Gets request context (IP address and User-Agent) for audit logging
+ * Returns both values for consistent security event tracking
+ */
+export function getRequestContext(request: NextRequest): { ipAddress: string; userAgent: string } {
+  return {
+    ipAddress: getClientIP(request),
+    userAgent: request.headers.get('user-agent') || 'unknown',
+  };
+}
+
+/**
  * Checks if an IP address is allowed by the custom endpoint's IP whitelist
  * @param clientIP The client's IP address
  * @param endpointWhitelist Array of IP addresses allowed for the endpoint

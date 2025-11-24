@@ -6,13 +6,31 @@ import * as db from '@/lib/db';
 import type { SmtpSettings } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import nodemailer from 'nodemailer';
+import { cookies } from 'next/headers';
 
-// smtpSettingsSchema is now defined inside saveSmtpSettingsAction
-
-export async function getSmtpSettingsAction(): Promise<SmtpSettings | null> {
-  return db.getSmtpSettings();
+/**
+ * Get the current tenant ID from cookies
+ * For SMTP config, we use tenant-scoped settings when available
+ */
+async function getCurrentTenantId(): Promise<string | null> {
+  const cookieStore = await cookies();
+  return cookieStore.get('currentTenantId')?.value || null;
 }
 
+/**
+ * Get SMTP settings for the current tenant, or null if not configured
+ * System admins accessing without a tenant context should use the global admin page
+ */
+export async function getSmtpSettingsAction(): Promise<SmtpSettings | null> {
+  const tenantId = await getCurrentTenantId();
+  // Get tenant-specific settings (no fallback to global from tenant page)
+  return db.getSmtpSettings(tenantId, false);
+}
+
+/**
+ * Test SMTP settings before saving
+ * Can be used from tenant-specific or global SMTP config pages
+ */
 export async function testSmtpSettingsAction(formData: FormData): Promise<{ success: boolean; message: string }> {
   const smtpSettingsSchema = z.object({
     host: z.string().min(1, "Host cannot be empty."),
@@ -44,6 +62,7 @@ export async function testSmtpSettingsAction(formData: FormData): Promise<{ succ
 
   try {
     const { testEmail, ...smtpConfig } = validatedFields.data;
+    const tenantId = await getCurrentTenantId();
     
     // Create a transporter with the provided settings
     const transporter = nodemailer.createTransport({
@@ -60,7 +79,7 @@ export async function testSmtpSettingsAction(formData: FormData): Promise<{ succ
     const mailOptions = {
       from: smtpConfig.fromEmail,
       to: testEmail,
-      subject: 'NCRelay - SMTP Test',
+      subject: `NCRelay - SMTP Test${tenantId ? ' (Tenant Configuration)' : ' (Global Configuration)'}`,
       text: 'This is a test email from NCRelay. If you received this, your SMTP settings are configured correctly.',
       html: '<p>This is a test email from NCRelay.</p><p>If you received this, your SMTP settings are configured correctly.</p>',
     };
@@ -84,13 +103,16 @@ export async function testSmtpSettingsAction(formData: FormData): Promise<{ succ
   }
 }
 
+/**
+ * Save SMTP settings for the current tenant
+ * Tenant admins save to their tenant, system admins should use global admin page
+ */
 export async function saveSmtpSettingsAction(formData: FormData): Promise<{ success: boolean; errors?: z.ZodIssue[]; message?: string }> {
-  // Define the schema inside the function
   const smtpSettingsSchema = z.object({
     host: z.string().min(1, "Host cannot be empty."),
     port: z.coerce.number().int().min(1, "Port must be a positive integer.").max(65535),
     user: z.string().min(1, "User cannot be empty."),
-    password: z.string().optional(), // Password can be optional for some SMTP setups
+    password: z.string().optional(),
     secure: z.boolean().default(false),
     fromEmail: z.string().email("Invalid 'From Email' address."),
     appBaseUrl: z.string().url("App Base URL must be a valid URL (e.g., http://localhost:9002 or https://yourdomain.com)."),
@@ -115,14 +137,24 @@ export async function saveSmtpSettingsAction(formData: FormData): Promise<{ succ
   }
 
   try {
+    const tenantId = await getCurrentTenantId();
+    
     const settingsToSave: SmtpSettings = {
-      id: 'default_settings', // Fixed ID for single config
+      id: tenantId ? `smtp_${tenantId}` : 'default_settings',
       ...validatedFields.data,
-      password: validatedFields.data.password || '', // Ensure password is a string
+      password: validatedFields.data.password || '',
+      tenantId: tenantId
     };
+    
     await db.saveSmtpSettings(settingsToSave);
-    revalidatePath('/dashboard/settings'); // Revalidate the main settings page
-    return { success: true, message: "SMTP settings saved successfully." };
+    revalidatePath('/dashboard/settings/smtp');
+    
+    return { 
+      success: true, 
+      message: tenantId 
+        ? "Tenant SMTP settings saved successfully." 
+        : "Global SMTP settings saved successfully." 
+    };
   } catch (error) {
     console.error("Failed to save SMTP settings:", error);
     return { success: false, message: "Failed to save SMTP settings due to a server error." };

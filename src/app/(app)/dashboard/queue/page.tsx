@@ -7,9 +7,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Loader2, RefreshCw, Clock, CheckCircle, XCircle, AlertCircle, 
-  Pause, Play, MoreVertical, Eye, Trash2, RotateCcw 
+  Pause, Play, MoreVertical, Eye, Trash2, RotateCcw, Filter, X 
 } from "lucide-react";
 import { 
   Dialog, 
@@ -46,6 +56,15 @@ export default function NotificationQueuePage() {
     total: 0
   });
   const [notifications, setNotifications] = useState<QueuedNotification[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+  const [filters, setFilters] = useState({
+    platform: 'all',
+    integration: 'all',
+    dateFrom: '',
+    dateTo: ''
+  });
+  const [bulkActionLoading, setBulkActionLoading] = useState<boolean>(false);
   const { toast } = useToast();
 
   const fetchStats = async () => {
@@ -71,6 +90,7 @@ export default function NotificationQueuePage() {
       if (!res.ok) throw new Error(`Failed to fetch ${status} notifications`);
       const data = await res.json();
       setNotifications(data);
+      setSelectedIds(new Set()); // Clear selections when fetching new data
     } catch (error) {
       console.error(`Error fetching ${status} notifications:`, error);
       toast({
@@ -81,6 +101,90 @@ export default function NotificationQueuePage() {
       setNotifications([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const filteredNotifications = notifications.filter(notification => {
+    if (filters.platform !== 'all' && notification.platform !== filters.platform) {
+      return false;
+    }
+    if (filters.integration !== 'all' && notification.integrationName !== filters.integration) {
+      return false;
+    }
+    if (filters.dateFrom && new Date(notification.createdAt) < new Date(filters.dateFrom)) {
+      return false;
+    }
+    if (filters.dateTo && new Date(notification.createdAt) > new Date(filters.dateTo)) {
+      return false;
+    }
+    return true;
+  });
+
+  const uniquePlatforms = Array.from(new Set(notifications.map(n => n.platform)));
+  const uniqueIntegrations = Array.from(new Set(notifications.map(n => n.integrationName)));
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredNotifications.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredNotifications.map(n => n.id)));
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleBulkAction = async (action: 'retry' | 'delete' | 'cancel') => {
+    if (selectedIds.size === 0) {
+      toast({
+        variant: "destructive",
+        title: "No Selection",
+        description: "Please select at least one notification."
+      });
+      return;
+    }
+
+    const actionText = action === 'retry' ? 'retry' : action === 'delete' ? 'delete' : 'cancel';
+    if (!confirm(`Are you sure you want to ${actionText} ${selectedIds.size} notification(s)?`)) {
+      return;
+    }
+
+    setBulkActionLoading(true);
+    try {
+      const res = await fetch('/api/management/queue/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ids: Array.from(selectedIds) })
+      });
+      
+      if (!res.ok) throw new Error(`Failed to ${actionText} notifications`);
+      
+      const data = await res.json();
+      toast({
+        title: "Bulk Action Complete",
+        description: data.message
+      });
+      
+      // Refresh data
+      setSelectedIds(new Set());
+      fetchStats();
+      fetchNotifications(activeTab);
+    } catch (error) {
+      console.error(`Error during bulk ${actionText}:`, error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Failed to ${actionText} notifications.`
+      });
+    } finally {
+      setBulkActionLoading(false);
     }
   };
 
@@ -386,10 +490,17 @@ export default function NotificationQueuePage() {
         
         {/* Action Buttons */}
         <div className="flex justify-between">
-          <Button onClick={() => { fetchStats(); fetchNotifications(activeTab); }}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => { fetchStats(); fetchNotifications(activeTab); }}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+            <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
+              <Filter className="mr-2 h-4 w-4" />
+              Filters
+              {showFilters && <X className="ml-2 h-4 w-4" />}
+            </Button>
+          </div>
           
           <div className="space-x-2">
             <Button 
@@ -435,6 +546,135 @@ export default function NotificationQueuePage() {
             </Button>
           </div>
         </div>
+
+        {/* Filters */}
+        {showFilters && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Filters</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <Label htmlFor="platform-filter">Platform</Label>
+                  <Select value={filters.platform} onValueChange={(value) => setFilters({ ...filters, platform: value })}>
+                    <SelectTrigger id="platform-filter">
+                      <SelectValue placeholder="All Platforms" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Platforms</SelectItem>
+                      {uniquePlatforms.map(platform => (
+                        <SelectItem key={platform} value={platform}>{platform}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="integration-filter">Integration</Label>
+                  <Select value={filters.integration} onValueChange={(value) => setFilters({ ...filters, integration: value })}>
+                    <SelectTrigger id="integration-filter">
+                      <SelectValue placeholder="All Integrations" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Integrations</SelectItem>
+                      {uniqueIntegrations.map(integration => (
+                        <SelectItem key={integration} value={integration}>{integration}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="date-from">Date From</Label>
+                  <Input
+                    id="date-from"
+                    type="date"
+                    value={filters.dateFrom}
+                    onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="date-to">Date To</Label>
+                  <Input
+                    id="date-to"
+                    type="date"
+                    value={filters.dateTo}
+                    onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end mt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setFilters({ platform: 'all', integration: 'all', dateFrom: '', dateTo: '' })}
+                >
+                  Clear Filters
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Bulk Actions */}
+        {selectedIds.size > 0 && (
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Badge variant="outline" className="text-lg px-3 py-1">
+                    {selectedIds.size} selected
+                  </Badge>
+                  <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
+                    Clear Selection
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  {activeTab === 'failed' && (
+                    <Button 
+                      onClick={() => handleBulkAction('retry')}
+                      disabled={bulkActionLoading}
+                      variant="default"
+                    >
+                      {bulkActionLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                      )}
+                      Bulk Retry
+                    </Button>
+                  )}
+                  <Button 
+                    onClick={() => handleBulkAction('cancel')}
+                    disabled={bulkActionLoading}
+                    variant="outline"
+                  >
+                    {bulkActionLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Pause className="mr-2 h-4 w-4" />
+                    )}
+                    Bulk Cancel
+                  </Button>
+                  <Button 
+                    onClick={() => handleBulkAction('delete')}
+                    disabled={bulkActionLoading}
+                    variant="destructive"
+                  >
+                    {bulkActionLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="mr-2 h-4 w-4" />
+                    )}
+                    Bulk Delete
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         
         {/* Notifications Table */}
         <Card>
@@ -458,9 +698,13 @@ export default function NotificationQueuePage() {
                   <div className="flex justify-center items-center p-8">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
-                ) : notifications.length === 0 ? (
+                ) : filteredNotifications.length === 0 ? (
                   <div className="text-center p-8 text-muted-foreground">
-                    No {activeTab} notifications found
+                    {notifications.length === 0 ? (
+                      <>No {activeTab} notifications found</>
+                    ) : (
+                      <>No notifications match the selected filters</>
+                    )}
                   </div>
                 ) : (
                   <div className="rounded-md border">
@@ -468,6 +712,13 @@ export default function NotificationQueuePage() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b bg-muted/50">
+                            <th className="py-3 px-4 text-left w-[50px]">
+                              <Checkbox
+                                checked={selectedIds.size === filteredNotifications.length && filteredNotifications.length > 0}
+                                onCheckedChange={handleSelectAll}
+                                aria-label="Select all"
+                              />
+                            </th>
                             <th className="py-3 px-4 text-left font-medium">Status</th>
                             <th className="py-3 px-4 text-left font-medium">Integration</th>
                             <th className="py-3 px-4 text-left font-medium">API Endpoint</th>
@@ -478,8 +729,15 @@ export default function NotificationQueuePage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {notifications.map((notification) => (
-                            <tr key={notification.id} className="border-b">
+                          {filteredNotifications.map((notification) => (
+                            <tr key={notification.id} className="border-b hover:bg-muted/30">
+                              <td className="py-3 px-4 align-middle">
+                                <Checkbox
+                                  checked={selectedIds.has(notification.id)}
+                                  onCheckedChange={() => handleSelectOne(notification.id)}
+                                  aria-label={`Select notification ${notification.id}`}
+                                />
+                              </td>
                               <td className="py-3 px-4 align-middle">
                                 <div className="flex items-center">
                                   {getStatusIcon(notification.status)}

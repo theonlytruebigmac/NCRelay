@@ -5,6 +5,7 @@ import { z } from 'zod';
 import * as db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import type { Integration } from '@/lib/types';
+import { ensurePermission, getCurrentTenantId } from '@/lib/permission-middleware';
 
 const integrationSchema = z.object({
   name: z.string().min(3, { message: "Name must be at least 3 characters." }).max(50),
@@ -15,18 +16,34 @@ const integrationSchema = z.object({
 });
 
 export async function getIntegrationsAction(): Promise<Integration[]> {
-  return db.getIntegrations();
+  try {
+    await ensurePermission('integrations', 'read');
+    const tenantId = getCurrentTenantId();
+    return tenantId ? db.getIntegrations(tenantId) : db.getIntegrations();
+  } catch (error) {
+    console.error('Permission denied:', error);
+    return [];
+  }
 }
 
 export async function getIntegrationByIdAction(id: string): Promise<Integration | null> {
-  return db.getIntegrationById(id);
+  try {
+    await ensurePermission('integrations', 'read');
+    return db.getIntegrationById(id);
+  } catch (error) {
+    console.error('Permission denied:', error);
+    return null;
+  }
 }
 
 export async function addIntegrationAction(formData: FormData) {
-  // Get current authenticated user
-  const user = await getCurrentUser();
-  if (!user) {
-    return { error: "Authentication required." };
+  try {
+    // Check permission to create integrations
+    const { user, tenantId } = await ensurePermission('integrations', 'create', {
+      logAction: true
+    });
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Permission denied" };
   }
 
   const data = Object.fromEntries(formData.entries());
@@ -55,20 +72,27 @@ export async function addIntegrationAction(formData: FormData) {
   }
 
   try {
-    await db.addIntegration(validatedFields.data, user.id);
+    const { user, tenantId } = await ensurePermission('integrations', 'create', {
+      logAction: true
+    });
+    await db.addIntegration(validatedFields.data, user.id, tenantId || undefined);
     revalidatePath('/dashboard/integrations');
     return { success: true };
   } catch (error) {
     console.error("Failed to add integration:", error);
-    return { error: "Failed to add integration." };
+    return { error: error instanceof Error ? error.message : "Failed to add integration." };
   }
 }
 
 export async function updateIntegrationAction(id: string, formData: FormData) {
-  // Get current authenticated user
-  const user = await getCurrentUser();
-  if (!user) {
-    return { error: "Authentication required." };
+  try {
+    // Check permission to update integrations
+    const { user, tenantId } = await ensurePermission('integrations', 'update', {
+      logAction: true,
+      resourceId: id
+    });
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Permission denied" };
   }
 
   const data = Object.fromEntries(formData.entries());
@@ -95,7 +119,11 @@ export async function updateIntegrationAction(id: string, formData: FormData) {
   }
   
   try {
-    const result = await db.updateIntegration(id, validatedFields.data);
+    const { user, tenantId } = await ensurePermission('integrations', 'update', {
+      logAction: true,
+      resourceId: id
+    });
+    const result = await db.updateIntegration(id, validatedFields.data, user.id, tenantId || undefined);
     if (!result) {
         return { error: "Integration not found." };
     }
@@ -104,19 +132,19 @@ export async function updateIntegrationAction(id: string, formData: FormData) {
     return { success: true };
   } catch (error) {
     console.error("Failed to update integration:", error);
-    return { error: "Failed to update integration." };
+    return { error: error instanceof Error ? error.message : "Failed to update integration." };
   }
 }
 
 export async function deleteIntegrationAction(id: string) {
-  // Get current authenticated user
-  const user = await getCurrentUser();
-  if (!user) {
-    return { error: "Authentication required." };
-  }
-
   try {
-    const success = await db.deleteIntegration(id);
+    // Check permission to delete integrations
+    const { user, tenantId } = await ensurePermission('integrations', 'delete', {
+      logAction: true,
+      resourceId: id
+    });
+
+    const success = await db.deleteIntegration(id, user.id, tenantId || undefined);
     if (!success) {
       return { error: "Integration not found or already deleted." };
     }
@@ -136,11 +164,12 @@ export async function toggleIntegrationEnabledAction(id: string, enabled: boolea
   }
 
   try {
+    const tenantId = getCurrentTenantId();
     const integration = await db.getIntegrationById(id);
     if (!integration) {
       return { error: "Integration not found." };
     }
-    await db.updateIntegration(id, { ...integration, enabled });
+    await db.updateIntegration(id, { ...integration, enabled }, user.id, tenantId || undefined);
     revalidatePath('/dashboard/integrations');
     return { success: true, enabled };
   } catch (error) {

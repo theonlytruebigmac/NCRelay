@@ -19,6 +19,11 @@ NCRelay is a powerful, enterprise-ready notification relay service that receives
 - **Enhanced Message Formatting**: Platform-specific rich formatting with colors, fields, and structured layouts
 
 ### Security & Access Control
+- **Multi-Factor Authentication (2FA)**: TOTP-based two-factor authentication with QR code setup and backup codes
+- **Active Session Management**: Track and manage user sessions across devices with IP and location tracking
+- **Security Audit Logs**: Comprehensive audit trail of all security events (logins, logouts, 2FA, password changes)
+- **Security Policies**: Configurable password requirements, 2FA enforcement, session timeouts, and account lockout policies
+- **API Rate Limiting**: Configurable request limits with IP whitelisting to prevent abuse
 - **IP Address Whitelisting**: Restrict endpoint access to specific IP addresses for enhanced security
 - **Secure Authentication**: JWT-based user management with bcrypt password hashing
 - **Data Encryption**: Sensitive data like webhook URLs and secrets are encrypted at rest
@@ -331,15 +336,47 @@ curl -X POST \
 
 ### Authentication & Authorization
 - **JWT-Based Authentication**: Secure session management with token-based authentication
+- **Two-Factor Authentication (2FA)**: 
+  - TOTP-based authentication using industry-standard algorithms
+  - QR code generation for easy mobile app setup (Google Authenticator, Authy, etc.)
+  - 10 backup codes for emergency access
+  - Per-user or tenant-wide 2FA enforcement
+  - Administrator-only 2FA requirement option
+- **Active Session Management**:
+  - Track sessions across multiple devices and locations
+  - View IP addresses, device info, and geolocation
+  - Revoke individual sessions or all other sessions remotely
+  - Automatic session expiration (7 days max, 8 hours inactivity)
+  - Device type detection (Desktop, Mobile, Tablet)
 - **Password Hashing**: bcrypt with configurable salt rounds
 - **Password Reset**: Secure token-based password reset flow with expiration
-- **Session Expiration**: Configurable session timeouts
+- **Session Expiration**: Configurable session timeouts (5 minutes to 7 days)
+- **Account Lockout**: Configurable failed login attempt limits and lockout duration
 
 ### Data Protection
 - **Data Encryption**: Sensitive data (webhook URLs, secrets) encrypted at rest using AES-256
 - **Secure Environment Variables**: Critical secrets stored in environment, never in code
 - **Input Validation**: Comprehensive XML/JSON parsing and validation
 - **SQL Injection Prevention**: Parameterized queries throughout
+
+### Security Policies & Governance
+- **Password Requirements**:
+  - Configurable minimum length (6-32 characters)
+  - Optional uppercase, lowercase, numbers, and symbols requirements
+  - Per-tenant policy enforcement
+- **Two-Factor Authentication Policies**:
+  - Enforce 2FA for all users tenant-wide
+  - Require 2FA for administrators only
+  - Flexible policy configuration per tenant
+- **Session & Lockout Policies**:
+  - Configurable session timeout (5 minutes to 7 days)
+  - Maximum failed login attempts (3-20)
+  - Account lockout duration (5 minutes to 24 hours)
+- **API Rate Limiting**:
+  - Configurable request limits per time window
+  - Per-tenant rate limit policies
+  - IP address whitelist for trusted sources
+  - Protection against DDoS and abuse
 
 ### Access Control
 - **IP Address Whitelisting**: Restrict endpoint access to specific IP addresses/ranges
@@ -354,9 +391,19 @@ curl -X POST \
 - **HTTPS Support**: TLS/SSL termination via reverse proxy
 
 ### Compliance & Auditing
+- **Security Audit Logs**: Comprehensive tracking of security events
+  - User authentication (login, logout, failed attempts)
+  - Two-factor authentication events (enabled, disabled, verified)
+  - Session management (created, revoked, expired)
+  - Password changes and resets
+  - Security policy changes
+  - Account lockouts and unlocks
+  - IP address and location tracking
+  - User-agent and device information
 - **Request Logging**: Full audit trail of all API requests and responses
 - **Change Tracking**: User actions logged for accountability
 - **Data Retention**: Configurable log retention policies
+- **Session Auditing**: Track active sessions across users and devices
 
 For security best practices and hardening, see our [Deployment Guide](docs/Documentation/deployment-guide.md)
 

@@ -22,7 +22,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.replace('/login');
+      router.replace('/');
     }
   }, [user, isLoading, router]);
 

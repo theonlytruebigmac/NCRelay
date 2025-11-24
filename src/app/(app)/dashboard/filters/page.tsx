@@ -5,6 +5,7 @@ import { PageShell } from "@/components/layout/PageShell";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Filter, Plus, Edit3, Trash2, Loader2 } from "lucide-react";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,11 @@ export default function FilterListPage() {
   const [filterToDelete, setFilterToDelete] = useState<string | null>(null);
   const [isPending, setPending] = useState(false);
   const { toast } = useToast();
+  const { can } = usePermissions();
+  
+  const canCreate = can('field_filters', 'create');
+  const canUpdate = can('field_filters', 'update');
+  const canDelete = can('field_filters', 'delete');
 
   useEffect(() => {
     loadFilters();
@@ -77,12 +83,14 @@ export default function FilterListPage() {
       title="Field Filters Configuration"
       description="Manage which fields are included in notifications"
       actions={
-        <Button asChild>
-          <Link href="/dashboard/filters/create">
-            <Plus className="mr-2 h-4 w-4" />
-            Create Filter
-          </Link>
-        </Button>
+        canCreate ? (
+          <Button asChild>
+            <Link href="/dashboard/filters/create">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Filter
+            </Link>
+          </Button>
+        ) : undefined
       }
     >
       {isLoading ? (
@@ -104,14 +112,18 @@ export default function FilterListPage() {
           <Filter className="h-16 w-16 mb-4 text-muted-foreground" />
           <h2 className="text-xl font-medium mb-2">No Field Filters Yet</h2>
           <p className="text-muted-foreground mb-6">
-            Create your first field filter to customize which data is forwarded from N-central notifications
+            {canCreate 
+              ? "Create your first field filter to customize which data is forwarded from N-central notifications"
+              : "No field filters have been created yet. Contact an administrator to create filters."}
           </p>
-          <Button asChild>
-            <Link href="/dashboard/filters/create">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Your First Filter
-            </Link>
-          </Button>
+          {canCreate && (
+            <Button asChild>
+              <Link href="/dashboard/filters/create">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Your First Filter
+              </Link>
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -180,30 +192,34 @@ export default function FilterListPage() {
                     Updated {format(new Date(filter.updatedAt), "MMM d, yyyy")}
                   </div>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      asChild
-                    >
-                      <Link 
-                        href={`/dashboard/filters/${filter.id}/edit`} 
-                        className="flex items-center gap-2"
-                        onClick={(e) => {
-                          console.log('Edit button clicked for filter:', filter.id);
-                          // Don't prevent default - let the navigation happen
-                        }}
+                    {canUpdate && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
                       >
-                        <Edit3 className="h-4 w-4" />
-                        <span>Edit</span>
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setFilterToDelete(filter.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                        <Link 
+                          href={`/dashboard/filters/${filter.id}/edit`} 
+                          className="flex items-center gap-2"
+                          onClick={(e) => {
+                            console.log('Edit button clicked for filter:', filter.id);
+                            // Don't prevent default - let the navigation happen
+                          }}
+                        >
+                          <Edit3 className="h-4 w-4" />
+                          <span>Edit</span>
+                        </Link>
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setFilterToDelete(filter.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardFooter>

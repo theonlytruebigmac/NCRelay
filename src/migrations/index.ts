@@ -23,6 +23,18 @@ import migration016 from './016-add-userid-to-request-logs';
 import migration017 from './017-add-indexes';
 import migration018 from './018-add-api-keys-and-features';
 import { migration as migration019 } from './013-ensure-notification-preferences';
+import * as migration020 from './020-add-multi-tenancy';
+import * as migration021 from './021-add-rbac-system';
+import * as migration022 from './022-add-custom-roles';
+import * as migration023 from './023-add-user-management-features';
+import migration024 from './024-add-session-token';
+import migration025 from './025-add-password-policy-columns';
+import migration026 from './026-add-tenant-rate-limiting';
+import migration027 from './027-add-ip-access-control';
+import * as migration028 from './028-add-tenant-smtp-settings';
+import * as migration035 from './035-add-password-count-requirements';
+import * as migration036 from './036-add-billing-admin-role';
+import migration037 from './037-add-oauth-fields';
 // Add new migration imports here...
 
 const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/app.db' : path.join(process.cwd(), 'app.db');
@@ -162,6 +174,53 @@ function getAllMigrations(): Migration[] {
     {
       id: 19,
       ...migration019
+    },
+    migration020,
+    migration021,
+    migration022,
+    migration023,
+    {
+      id: 24,
+      name: migration024.name || 'add-session-token',
+      up: migration024.up,
+      down: migration024.down
+    },
+    {
+      id: 25,
+      name: migration025.name || 'add-password-policy-columns',
+      up: migration025.up,
+      down: migration025.down
+    },
+    {
+      id: 26,
+      name: migration026.name || 'add-tenant-rate-limiting',
+      up: migration026.up,
+      down: migration026.down
+    },
+    {
+      id: 27,
+      name: migration027.name || 'add-ip-access-control',
+      up: migration027.up,
+      down: migration027.down
+    },
+    migration028,
+    {
+      id: 35,
+      name: migration035.name || 'add-password-count-requirements',
+      up: migration035.up,
+      down: migration035.down
+    },
+    {
+      id: 36,
+      name: migration036.name || 'add-billing-admin-role',
+      up: migration036.up,
+      down: migration036.down
+    },
+    {
+      id: 37,
+      name: migration037.name || 'add-oauth-fields',
+      up: migration037.up,
+      down: migration037.down
     }
   ];
 
@@ -219,9 +278,48 @@ export async function runMigrations(): Promise<void> {
       console.log('Database schema is up to date, no migrations applied');
     }
     
+    // Create initial admin user if it doesn't exist
+    await ensureInitialAdminUser(db);
+    
   } finally {
     // Close database connection
     db.close();
+  }
+}
+
+// Create initial admin user if it doesn't exist
+async function ensureInitialAdminUser(db: Database.Database): Promise<void> {
+  const adminEmail = process.env.INITIAL_ADMIN_EMAIL;
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD;
+  const adminName = process.env.INITIAL_ADMIN_NAME || 'Admin User';
+
+  if (!adminEmail || !adminPassword) {
+    console.log('Initial admin user environment variables not set. Skipping creation.');
+    return;
+  }
+
+  if (adminPassword === 'changeme' || adminPassword.length < 8) {
+    console.warn('WARNING: Initial admin password is weak. Please set a strong password in .env');
+  }
+
+  const stmt = db.prepare('SELECT id FROM users WHERE email = ?');
+  const existingAdmin = stmt.get(adminEmail);
+
+  if (!existingAdmin) {
+    const bcrypt = (await import('bcryptjs')).default;
+    const { v4: uuidv4 } = await import('uuid');
+    
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+    const now = new Date().toISOString();
+    const userId = uuidv4();
+    
+    const insertStmt = db.prepare(
+      'INSERT INTO users (id, email, name, hashedPassword, isAdmin, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    );
+    insertStmt.run(userId, adminEmail, adminName, hashedPassword, 1, now, now);
+    console.log(`Initial admin user created: ${adminEmail}`);
+  } else {
+    console.log(`Admin user already exists: ${adminEmail}`);
   }
 }
 

@@ -2,6 +2,7 @@
 'use server';
 
 import * as db from '@/lib/db';
+import { cookies } from 'next/headers';
 
 export interface DashboardStats {
   activeIntegrationsCount: number;
@@ -15,8 +16,15 @@ export interface DashboardStats {
   totalOutboundAttempts: number;
 }
 
+async function getCurrentTenantId(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const tenantCookie = cookieStore.get('currentTenantId');
+  return tenantCookie?.value || null;
+}
+
 export async function getDashboardStatsAction(): Promise<DashboardStats> {
-  return db.getDashboardStats();
+  const tenantId = await getCurrentTenantId();
+  return db.getDashboardStats(tenantId || undefined);
 }
 
     
