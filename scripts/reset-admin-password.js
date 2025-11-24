@@ -48,6 +48,6 @@ db.prepare(`
 console.log('✓ Admin password reset successfully!');
 console.log('You can now log in with:');
 console.log('  Email:', adminEmail);
-console.log('  Password:', adminPassword);
+console.log('  Password: [Set from INITIAL_ADMIN_PASSWORD environment variable]');
 
 db.close();

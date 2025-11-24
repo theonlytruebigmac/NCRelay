@@ -26,6 +26,9 @@ export interface User {
   email: string;
   name?: string;
   isAdmin?: boolean;
+  provider?: 'local' | 'google'; // OAuth provider type
+  providerId?: string; // OAuth provider's user ID
+  providerAccountId?: string; // OAuth account ID for linking
   // hashedPassword is not sent to client
 }
 

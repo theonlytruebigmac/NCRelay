@@ -34,6 +34,7 @@ import migration027 from './027-add-ip-access-control';
 import * as migration028 from './028-add-tenant-smtp-settings';
 import * as migration035 from './035-add-password-count-requirements';
 import * as migration036 from './036-add-billing-admin-role';
+import migration037 from './037-add-oauth-fields';
 // Add new migration imports here...
 
 const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/app.db' : path.join(process.cwd(), 'app.db');
@@ -214,6 +215,12 @@ function getAllMigrations(): Migration[] {
       name: migration036.name || 'add-billing-admin-role',
       up: migration036.up,
       down: migration036.down
+    },
+    {
+      id: 37,
+      name: migration037.name || 'add-oauth-fields',
+      up: migration037.up,
+      down: migration037.down
     }
   ];
 
